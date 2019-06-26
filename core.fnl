@@ -69,4 +69,4 @@
            (-> console (: :raise) (: :focus)))))))
 
 ;; disable annoying Cmd+M for minimizing windows
-(hs.hotkey.bind [:cmd] :m nil (fn [] nil))
+;; (hs.hotkey.bind [:cmd] :m nil (fn [] nil))

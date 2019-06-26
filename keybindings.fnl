@@ -1,6 +1,7 @@
 (local utils (require :utils))
 
 (local arrows {:h :left, :j :down,:k :up,:l :right})
+(local log (hs.logger.new 'keybindings.fnl', 'debug'))
 
 (fn simple-tab-switching []
   (let [tbl []]
@@ -33,16 +34,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; App switcher with Cmd++n/p ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(let [switcher (hs.window.switcher.new
-                (utils.globalFilter)
-                {:textSize 12
-                 :showTitles false
-                 :showThumbnails false
-                 :showSelectedTitle false
-                 :selectedThumbnailSize 800
-                 :backgroundColor [0 0 0 0]})]
-  (hs.hotkey.bind [:cmd] :n (fn [] (: switcher :next)))
-  (hs.hotkey.bind [:cmd] :p (fn [] (: switcher :previous))))
+
+; (let [switcher (hs.window.switcher.new
+;                 (utils.globalFilter)
+;                 {:textSize 12
+;                  :showTitles false
+;                  :showThumbnails false
+;                  :showSelectedTitle false
+;                  :selectedThumbnailSize 800
+;                  :backgroundColor [0 0 0 0]})]
+;   (hs.hotkey.bind [:cmd] :n (fn [] (: switcher :next)))
+;   (hs.hotkey.bind [:cmd] :p (fn [] (: switcher :previous))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Zoom Hotkeys
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(hs.hotkey.bind [:cmd] :m 
+  (fn mute-or-unmute-zoom
+    []
+    (let [zoom (hs.appfinder.appFromName "zoom.us")]
+      (if (: zoom :findMenuItem ["Meeting" "Mute Audio"])
+        (: zoom :selectMenuItem ["Meeting" "Mute Audio"])
+        (: zoom :selectMenuItem ["Meeting" "Unmute Audio"])))))
+
 
 (global app-specific-keys (or app-specific-keys {}))
 
