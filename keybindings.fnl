@@ -55,9 +55,12 @@
   (fn mute-or-unmute-zoom
     []
     (let [zoom (hs.appfinder.appFromName "zoom.us")]
+      (: log :i "Mute or Unmute Zoom")
       (if (: zoom :findMenuItem ["Meeting" "Mute Audio"])
-        (: zoom :selectMenuItem ["Meeting" "Mute Audio"])
-        (: zoom :selectMenuItem ["Meeting" "Unmute Audio"])))))
+        (do (: zoom :selectMenuItem ["Meeting" "Mute Audio"])
+            (: log :i "Mute Audio"))
+        (do (: zoom :selectMenuItem ["Meeting" "Unmute Audio"])
+            (: log :i "Unmute Audio"))))))
 
 
 (global app-specific-keys (or app-specific-keys {}))
