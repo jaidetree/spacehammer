@@ -1,4 +1,4 @@
-(local music-app "Google Play Music Desktop Player")
+(local music-app "Spotify")
 
 (fn m-key [key]
   (: (hs.eventtap.event.newSystemKeyEvent (string.upper key) true) :post)
