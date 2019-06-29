@@ -1,6 +1,5 @@
 (local windows (require :windows))
 (local multimedia (require :multimedia))
-(local slack (require :slack))
 
 (fn add-state [modal]
   (modal.add-state
@@ -16,7 +15,7 @@
              [:cmd] :space
              (fn [] (: fsm :toMain)))
 
-            (slack.bind self.hotkeyModal fsm)
+            ; (slack.bind self.hotkeyModal fsm)
 
             (each [key app (pairs
                             {:i "iTerm2",

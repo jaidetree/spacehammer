@@ -52,7 +52,7 @@
 ;; HYPER MODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(global hyper (hs.hotkey.modal.new {} 'F17'))
+(global hyper (hs.hotkey.modal.new [] 'F17'))
 
 (fn enter-hyper-mode
   []
@@ -63,9 +63,10 @@
   []
   (: hyper :exit)
   (when (not hyper.triggered)
-    (hs.eventtap.keyStroke {} 'ESCAPE')))
+    (hs.eventtap.keyStroke [] :ESCAPE)))
 
-(hs.hotkey.bind {} 'F18' enter-hyper-mode exit-hyper-mode)
+(hs.hotkey.bind [] :F18 enter-hyper-mode exit-hyper-mode)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Zoom Hotkeys
@@ -73,22 +74,31 @@
 
 (fn hyper-bind
   [key f]
-  (: hyper :bind {} key (fn []
+  (: hyper :bind [] key (fn []
                           (f)
                           (set hyper.triggered true))))
 
 
 
-(hyper-bind 'm'
-  (fn mute-or-unmute-zoom
-    []
-    (let [zoom (hs.appfinder.appFromName "zoom.us")]
-      (: log :i "Mute or Unmute Zoom")
-      (if (: zoom :findMenuItem ["Meeting" "Mute Audio"])
-        (do (: zoom :selectMenuItem ["Meeting" "Mute Audio"])
-            (: log :i "Mute Audio"))
-        (do (: zoom :selectMenuItem ["Meeting" "Unmute Audio"])
-            (: log :i "Unmute Audio"))))))
+(hs.hotkey.bind [:cmd] :m
+  (fn []
+    (let [safari (hs.appfinder.appFromName "Safari")]
+      (print (string.format "safari: %s" safari))
+      (: safari :activa)
+      (: safari :selectMenuItem ["View"  "Reload Page"]))))
+
+
+;(hyper-bind 'm'
+;(hs.hotkey.bind [:cmd] :m
+;  (fn mute-or-unmute-zoom
+;    []
+;    (let [zoom (hs.appfinder.appFromName "zoom.us")]
+;      (: log :i "Mute or Unmute Zoom")
+;      (if (: zoom :findMenuItem ["Meeting" "Mute Audio"])
+;        (do (: zoom :selectMenuItem ["Meeting" "Mute Audio"])
+;            (: log :i "Mute Audio"))
+;        (do (: zoom :selectMenuItem ["Meeting" "Unmute Audio"])
+;            (: log :i "Unmute Audio"))))))
 
 
 (global app-specific-keys (or app-specific-keys {}))

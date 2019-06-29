@@ -39,22 +39,27 @@
 ;;;;;;;;;;;;
 ;; modals ;;
 ;;;;;;;;;;;;
-(local modal (require :modal))
+; (local modal (require :modal))
 
-(each [_ n (pairs [:windows
-                   :apps
-                   :multimedia
-                   :emacs
-                   :chrome
-                   :grammarly])]
-  (let [module (require n)]
-    (when module.add-state
-      (module.add-state modal))
-    (when module.add-app-specific
-      (module.add-app-specific))))
+; (each [_ n (pairs [:windows
+;                    :apps
+;                    :multimedia
+;                    :emacs
+;                    :chrome
+;                    :grammarly
+;   (let [module (require n)]
+;     (when module.add-state
+;       (module.add-state modal))
+;     (when module.add-app-specific
+;       (module.add-app-specific))))
 
-(let [state-machine (modal.create-machine)]
-  (: state-machine :toMain))
+; (let [state-machine (modal.create-machine)]
+;   (: state-machine :toMain))
+
+(local modal (require :modals2))
+
+(modal.init-modals modal.modal-paths)
+
 
 (require :keybindings)
 
