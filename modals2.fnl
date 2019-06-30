@@ -15,7 +15,8 @@
 (global state
         (atom.new {:route []
                    :active false
-                   :modals {}}))
+                   :modals {}
+                   :bindings []}))
 
 (fn seq?
   [tbl]
@@ -43,16 +44,36 @@
     []
     tbl))
 
+(fn filter
+ [f tbl]
+ (reduce
+  (fn [xs v k]
+   (when (f v k)
+    (table.insert xs v))
+   xs)
+  []
+  tbl))
+
 (fn join
   [sep list]
-  (let [last-k (# list)]
-    (reduce
-      (fn [str v k]
-        (if (< k last-k)
-          (.. str v sep)
-          (.. str v)))
-      ""
-      list)))
+  (table.concat list sep))
+
+(fn split
+ [search str]
+ (var pieces [])
+ (var input str)
+ (let [len (# search)]
+   (while input
+    (let [i (string.find input search 1 true)]
+     (if i
+       (let [left (string.sub input 1 (- i 1))
+             right (string.sub input (+ i len))]
+         (set input right)
+         (table.insert pieces left))
+       (do
+         (table.insert pieces input)
+         (set input nil))))))
+ pieces)
 
 (fn max-length
   [items]
@@ -61,39 +82,32 @@
     0
     items))
 
-(fn repeat-str
-  [x str]
-  (var result "")
-  (for [i 1 x]
-    (set result (.. result str)))
-  result)
+(fn logf
+ [...]
+ (let [prefixes [...]]
+  (fn [x]
+   (print (table.unpack prefixes) (hs.inspect x)))))
+
+(fn tap
+ [f x ...]
+ (f x (table.unpack [...]))
+ x)
+
+(fn concat
+ [...]
+ (reduce
+  (fn [cat tbl]
+    (each [_ v (ipairs tbl)]
+      (table.insert cat v))
+    cat)
+  []
+  [...]))
+
 
 (fn pad-str
   [char max str]
   (let [diff (- max (# str))]
-    (.. str (repeat-str diff char))))
-
-
-(fn space-columns
-  [items]
-  (let [max (max-length items)]
-    (map
-      (fn [[key action]] (.. (pad-str " " max key) " - " action))
-      items)))
-
-(fn show-modal-menu
-  [routes paths]
-  (let [menu (map (fn [[key routes]]
-                    [key (. routes :title)])
-                  routes)
-        menu (space-columns menu)
-        text (join "\n" menu)]
-    (hs.alert.closeAll)
-    (alert text
-           {:textFont "Courier New"
-            :radius 0
-            :strokeWidth 0}
-           99999)))
+    (.. str (string.rep char diff))))
 
 (fn set-modals
   [modals]
@@ -102,24 +116,116 @@
                      state)))
 
 (fn activate-modal
-  []
+  [route]
   (atom.swap! state (fn [state]
                       (tset state :active true)
+                      (tset state :route (or route []))
                       state)))
 
 (fn deactivate-modal
   []
   (atom.swap! state (fn [state]
                       (tset state :active false)
+                      (tset state :route [])
                       state)))
 
-(fn remove-escape-listener
+(fn set-bindings
+  [bindings]
+  (atom.swap! state (fn [state]
+                      (tset state :bindings bindings)
+                      state)))
+
+(fn align-columns
+  [items]
+  (let [max (max-length items)]
+    (map
+      (fn [[key action]]
+        (.. (pad-str " " max key) " - " action))
+      items)))
+
+(fn create-action-trigger
+ [action]
+ (let [[file fn-name] (split "/" action)]
+   (fn []
+    (let [module (require file)]
+      (print "action " action)
+      (deactivate-modal)
+      ((. module fn-name))))))
+
+(fn create-menu-trigger
+ [key]
+ (fn []
+  (let [route (.. (atom.deref state) :route)]
+    (activate-modal (concat [] route [key])))))
+
+(fn query-bindings
+ [type-key routes]
+ (->> routes
+      (map (fn [[key route]] [key (. route type-key)]))
+      (filter (fn [[key action]] action))))
+
+(fn parse-action-bindings
+ [routes]
+ (->> (query-bindings :action routes)
+      (map (fn [[key action]]
+            {:key key
+             :fn (create-action-trigger action)}))))
+
+(fn parse-menu-bindings
+ [routes]
+ (->> (query-bindings :menu routes)
+      (map (fn [[key _]]
+            {:key key
+             :fn (create-menu-trigger key)}))))
+
+(fn parse-bindings
+ [routes]
+ (let [action-bindings (parse-action-bindings routes)
+       menu-bindings (parse-menu-bindings routes)]
+  (concat [] action-bindings menu-bindings)))
+
+(fn clear-bindings
+ [bindings]
+ (print "Clear Bindings")
+ (when bindings
+   (each [_ binding (ipairs bindings)]
+    (when (and binding (. binding :disable))
+      (print "deleting binding" (hs.inspect binding))
+      (hs.hotkey.deleteAll [] (. binding :idx))))))
+      ;(: binding :disable)))))
+
+(fn bind-key
+ [{:key key :fn f}]
+ (hs.hotkey.bind [] key f))
+
+(fn create-bindings
+ [routes]
+ (print "Set Bindings")
+ (set-bindings (->> routes
+                    (parse-bindings)
+                    (map bind-key))))
+
+(fn show-modal-menu
+  [routes paths]
+  (let [menu (->> routes
+                  (map (fn [[key route]]
+                        [key (. route :title)]))
+                  (align-columns))
+        text (join "\n" menu)]
+    (hs.alert.closeAll)
+    (alert text
+           {:textFont "Courier New"
+            :radius 0
+            :strokeWidth 0}
+           99999)))
+
+(fn unbind-escape
  []
  (hs.hotkey.deleteAll [] :ESCAPE))
 
-(fn create-escape-listener
+(fn bind-escape
  []
- (remove-escape-listener)
+ (unbind-escape)
  (hs.hotkey.bind [] :ESCAPE deactivate-modal))
 
 (fn clear-timeout
@@ -147,23 +253,29 @@
 (atom.add-watch
   state :show-modals
   (fn show-modals
-    [{:active active-now :route route :modals modals} {:active was-active}]
+    [{:active active-now :route current-route :modals modals :bindings bindings}
+     {:active was-active :route prev-route}]
     (print "show-modals" active-now was-active)
-    (when (and active-now (~= active-now was-active))
-      (show-modal-menu modals route)
-      (create-escape-listener)
+    (when (or (and active-now (~= active-now was-active))
+              (~= (join "," current-route) (join "," prev-route)))
+      (clear-bindings bindings)
+      (create-bindings modals)
+      (show-modal-menu modals current-route)
+      (bind-escape)
       (set-timeout))))
 
 (atom.add-watch
   state :hide-modals
   (fn show-modals
-    [{:active active-now} {:active was-active}]
+    [{:active active-now :bindings bindings} {:active was-active}]
     (print "hide-modals" active-now was-active)
     (when (and (not active-now) (~= active-now was-active))
+     (clear-bindings bindings)
      (hs.alert.closeAll)
-     (remove-escape-listener)
+     (unbind-escape)
      (clear-timeout))))
 
 
-{:init         init
- :modal-paths  modal-paths}
+{:init            init
+ :activate-alfred activate-alfred
+ :modal-paths     modal-paths}
