@@ -58,7 +58,7 @@
 
 (local modal (require :modals2))
 
-(modal.init-modals modal.modal-paths)
+(modal.init modal.modal-paths)
 
 
 (require :keybindings)

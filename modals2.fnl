@@ -1,5 +1,8 @@
-(local log (hs.logger.new 'modals2.fnl', 'debug'))
+(local atom (require :atom))
 (local windows (require :windows))
+(local log (hs.logger.new 'modals2.fnl', 'debug'))
+(var timeout nil)
+
 (global modal-paths
         [[:space {:title "Alfred"
                   :action "modals2/activate-alfred"}]
@@ -10,8 +13,9 @@
               :menu [[:m {:title "Mute or Unmute Audio"
                           :action "zoom/mute-or-unmute"}]]}]])
 (global state
-        {:route []
-         :active false})
+        (atom.new {:route []
+                   :active false
+                   :modals {}}))
 
 (fn seq?
   [tbl]
@@ -78,10 +82,10 @@
       items)))
 
 (fn show-modal-menu
-  [modal]
-  (let [menu (map (fn [[key modal]]
-                    [key (. modal :title)])
-                  modal)
+  [routes paths]
+  (let [menu (map (fn [[key routes]]
+                    [key (. routes :title)])
+                  routes)
         menu (space-columns menu)
         text (join "\n" menu)]
     (hs.alert.closeAll)
@@ -89,17 +93,77 @@
            {:textFont "Courier New"
             :radius 0
             :strokeWidth 0}
-           3)))
+           99999)))
 
-(fn init-modals
+(fn set-modals
+  [modals]
+  (atom.swap! state (fn [state]
+                     (tset state :modals modals)
+                     state)))
+
+(fn activate-modal
+  []
+  (atom.swap! state (fn [state]
+                      (tset state :active true)
+                      state)))
+
+(fn deactivate-modal
+  []
+  (atom.swap! state (fn [state]
+                      (tset state :active false)
+                      state)))
+
+(fn remove-escape-listener
+ []
+ (hs.hotkey.deleteAll [] :ESCAPE))
+
+(fn create-escape-listener
+ []
+ (remove-escape-listener)
+ (hs.hotkey.bind [] :ESCAPE deactivate-modal))
+
+(fn clear-timeout
+ []
+ (when timeout
+  (: timeout :stop)
+  (set timeout nil)))
+
+(fn set-timeout
+  []
+  (let [timer (hs.timer.doAfter 3 deactivate-modal)]
+    (clear-timeout)
+    (set timeout timer)))
+
+(fn init
   [modal]
+  (set-modals modal)
   (hs.hotkey.bind [:cmd] :space
-    (fn []
-      (show-modal-menu modal))))
+    activate-modal))
 
 (fn activate-alfred
   []
   (windows.activate-app "Alfred 4"))
 
-{:init-modals     init-modals
- :modal-paths     modal-paths}
+(atom.add-watch
+  state :show-modals
+  (fn show-modals
+    [{:active active-now :route route :modals modals} {:active was-active}]
+    (print "show-modals" active-now was-active)
+    (when (and active-now (~= active-now was-active))
+      (show-modal-menu modals route)
+      (create-escape-listener)
+      (set-timeout))))
+
+(atom.add-watch
+  state :hide-modals
+  (fn show-modals
+    [{:active active-now} {:active was-active}]
+    (print "hide-modals" active-now was-active)
+    (when (and (not active-now) (~= active-now was-active))
+     (hs.alert.closeAll)
+     (remove-escape-listener)
+     (clear-timeout))))
+
+
+{:init         init
+ :modal-paths  modal-paths}
