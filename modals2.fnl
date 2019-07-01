@@ -17,12 +17,12 @@
                  :title "Zoom"
                  :menu [{:key :m
                          :title "Mute or Unmute Audio"
-                         :action "zoom/mute-or-unmute"}]}]}
+                         :action "zoom/mute-or-unmute-audio"}]}]})
 
 (global state
-        (atom.new {:route []
+        (atom.new {:paths []
                    :active false
-                   :modals {}
+                   :config {}
                    :bindings nil}))
 
 (fn seq?
@@ -130,24 +130,24 @@
   (let [diff (- max (# str))]
     (.. str (string.rep char diff))))
 
-(fn set-modals
-  [modals]
+(fn set-config
+  [config]
   (atom.swap! state (fn [state]
-                     (tset state :modals modals)
+                     (tset state :config config)
                      state)))
 
 (fn activate-modal
-  [route]
+  [paths]
   (atom.swap! state (fn [state]
                       (tset state :active true)
-                      (tset state :route (or route []))
+                      (tset state :paths (or paths []))
                       state)))
 
 (fn deactivate-modal
   []
   (atom.swap! state (fn [state]
                       (tset state :active false)
-                      (tset state :route [])
+                      (tset state :paths [])
                       state)))
 
 (fn set-bindings
@@ -175,34 +175,34 @@
 (fn create-menu-trigger
  [key]
  (fn []
-  (let [route (. (atom.deref state) :route)]
+  (let [paths (. (atom.deref state) :paths)]
     (hs.alert.closeAll 0)
-    (activate-modal (concat [] route [key])))))
+    (activate-modal (concat [] paths [key])))))
 
 (fn query-bindings
- [type-key routes]
- (->> routes
-      (map (fn [[key route]] [key (. route type-key)]))
+ [type-key items]
+ (->> items
+      (map (fn [item] [(. item :key) (. item type-key)]))
       (filter (fn [[key action]] action))))
 
 (fn parse-action-bindings
- [routes]
- (->> (query-bindings :action routes)
+ [items]
+ (->> (query-bindings :action items)
       (map (fn [[key action]]
             {:key key
              :fn (create-action-trigger action)}))))
 
 (fn parse-menu-bindings
- [routes]
- (->> (query-bindings :menu routes)
+ [items]
+ (->> (query-bindings :menu items)
       (map (fn [[key _]]
             {:key key
              :fn (create-menu-trigger key)}))))
 
 (fn parse-bindings
- [routes]
- (let [action-bindings (parse-action-bindings routes)
-       menu-bindings (parse-menu-bindings routes)]
+ [items]
+ (let [action-bindings (parse-action-bindings items)
+       menu-bindings (parse-menu-bindings items)]
   (concat [] action-bindings menu-bindings)))
 
 (fn clear-bindings
@@ -211,8 +211,8 @@
    (clear-bindings)))
 
 (fn bind-keys
- [routes]
- (let [bindings (->> routes
+ [items]
+ (let [bindings (->> items
                      (parse-bindings))
        modal (hs.hotkey.modal.new [] nil)]
    (each [_ {:key key :fn f} (ipairs bindings)]
@@ -226,12 +226,12 @@
       (: modal :delete)))))
 
 (fn show-modal-menu
-  [routes paths]
-  (let [menu (->> routes
-                  (map (fn [[key route]]
-                        [key (. route :title)]))
-                  (align-columns))
-        text (join "\n" menu)]
+  [menu paths]
+  (let [items (->> (. menu :menu)
+                   (map (fn [item]
+                         [(. item :key) (. item :title)]))
+                   (align-columns))
+        text (join "\n" items)]
     (hs.alert.closeAll)
     (alert text
            {:textFont "Courier New"
@@ -252,8 +252,8 @@
     (set timeout timer)))
 
 (fn init
-  [modal]
-  (set-modals modal)
+  [config]
+  (set-config config)
   (hs.hotkey.bind [:cmd] :space
     activate-modal))
 
@@ -264,31 +264,38 @@
 (fn find-menu
   [target menus]
   (find
-   (fn [[key item]]
-     (and (= key target)
+   (fn [item]
+     (and (= (. item :key) target)
           (. item :menu)))
    menus))
 
 (fn get-menu
-  [menus paths]
+  [config paths]
   (reduce
-    (fn [current key]
-      (let [item (find-menu key current)]
-        (. item 2 :menu)))
-    menus
+    (fn [{:menu menu} key]
+      (let [item (find-menu key menu)]
+        item))
+    config
     paths))
     
 (atom.add-watch
   state :show-modals
   (fn show-modals
-    [{:active active-now :route current-route :modals modals :bindings bindings}
-     {:active was-active :route prev-route}]
+    [{:active active-now
+      :paths current-paths
+      :config config
+      :bindings bindings}
+     {:active was-active :paths prev-paths}]
     (when (or (and active-now (~= active-now was-active))
-              (and active-now (~= (join "," current-route) (join "," prev-route))))
-      (let [menu (get-menu modals current-route)]
+              (and active-now (~= (join "," current-paths)
+                                  (join "," prev-paths))))
+      (let [menu (get-menu config current-paths)
+            {:menu items} menu]
+        (print "menu: " (hs.inspect items))
         (clear-bindings bindings)
-        (set-bindings (bind-keys menu))
-        (show-modal-menu menu current-route)
+        (set-bindings (bind-keys items))
+        ;; breaks here
+        (show-modal-menu menu current-paths)
         (set-timeout)))))
 
 (atom.add-watch
@@ -310,4 +317,4 @@
 
 {:init            init
  :activate-alfred activate-alfred
- :modal-paths     modal-paths}
+ :config          config}
