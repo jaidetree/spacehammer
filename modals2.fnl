@@ -345,9 +345,7 @@
             {:menu items} menu]
         (clear-bindings bindings)
         (set-bindings (bind-keys items))
-        ;; breaks here
-        (show-modal-menu menu current-paths)
-        (set-timeout)))))
+        (show-modal-menu menu current-paths)))))
 
 (atom.add-watch
   state :hide-modals
