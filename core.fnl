@@ -35,6 +35,23 @@
 
 (: config-file-pathwatcher :start)
 
+;;;;;;;;;;;;;;;
+;; Load modules
+;;;;;;;;;;;;;;;
+
+(local modules [:mosaic
+                :zoom])
+
+(each [_ module (ipairs modules)]
+  (require module))
+
+;;;;;;;;;;;;;;;;;;;;
+;; Initialize modals
+;;;;;;;;;;;;;;;;;;;;
+
+(local modal (require :modals2))
+(modal.init modal.config)
+
 
 ;;;;;;;;;;;;
 ;; modals ;;
@@ -55,10 +72,6 @@
 
 ; (let [state-machine (modal.create-machine)]
 ;   (: state-machine :toMain))
-
-(local modal (require :modals2))
-
-(modal.init modal.config)
 
 
 (require :keybindings)

@@ -12,12 +12,63 @@
                  :title "Multimedia"
                  :menu [{:key :s
                          :title "Play or Pause"
-                         :action "multimedia/play-or-pause"}]}
+                         :action "multimedia/play-or-pause"}
+												{:key :h
+                         :title "Prev Track"
+                         :action "multimedia/prev-track"}
+												{:key :l
+                         :title "Next Track"
+                         :action "multimedia/next-track"}
+												{:key :j
+                         :title "Volume Down"
+                         :action "multimedia/volume-down"
+                         :repeatable true}
+												{:key :k
+                         :title "Volume Up"
+                         :action "multimedia/volume-up"
+                         :repeatable true}]}
+                {:key :w
+                 :title "Window"
+                 :menu [{:key :1
+                         :title "Full-screen"
+                         :action "mosaic/full-size"
+                         :repeatable true}
+                        {:key :2
+                         :title "Left Half"
+                         :action "mosaic/left-half"
+                         :repeatable true}
+                        {:key :3
+                         :title "Right Half"
+                         :action "mosaic/right-half"
+                         :repeatable true}
+                        {:key :4
+                         :title "Left Big"
+                         :action "mosaic/left-big"
+                         :repeatable true}
+                        {:key :5
+                         :title "Right Small"
+                         :action "mosaic/right-small"
+                         :repeatable true}]}
                 {:key :z
                  :title "Zoom"
-                 :menu [{:key :m
+                 :menu [{:key :a
                          :title "Mute or Unmute Audio"
-                         :action "zoom/mute-or-unmute-audio"}]}]})
+                         :action "zoom/mute-or-unmute-audio"}
+                        {:key :v
+                         :title "Start or Stop Video"
+                         :action "zoom/start-or-stop-video"}
+                        {:key :s
+                         :title "Start or Stop Sharing"
+                         :action "zoom/start-or-stop-sharing"}
+                        {:key :f
+                         :title "Pause or Resume Sharing"
+                         :action "zoom/pause-or-resume-sharing"}
+                        {:key :i
+                         :title "Invite..."
+                         :action "zoom/invite"}
+                        {:key :l
+                         :title "End Meeting"
+                         :action "zoom/end-meeting"}]}]})
 
 (global state
         (atom.new {:paths []
@@ -150,6 +201,18 @@
                       (tset state :paths [])
                       state)))
 
+(fn clear-timeout
+ []
+ (when timeout
+  (: timeout :stop)
+  (set timeout nil)))
+
+(fn set-timeout
+  []
+  (let [timer (hs.timer.doAfter 5 deactivate-modal)]
+    (clear-timeout)
+    (set timeout timer)))
+
 (fn set-bindings
   [bindings]
   (atom.swap! state (fn [state]
@@ -165,10 +228,12 @@
       items)))
 
 (fn create-action-trigger
- [action]
+ [{:action action :repeatable repeatable}]
  (let [[file fn-name] (split "/" action)]
    (fn []
-    (deactivate-modal)
+    (if repeatable
+      (set-timeout)
+			(deactivate-modal))
     (let [module (require file)]
       (: module fn-name)))))
 
@@ -182,20 +247,19 @@
 (fn query-bindings
  [type-key items]
  (->> items
-      (map (fn [item] [(. item :key) (. item type-key)]))
-      (filter (fn [[key action]] action))))
+      (filter (fn [item] (. item type-key)))))
 
 (fn parse-action-bindings
  [items]
  (->> (query-bindings :action items)
-      (map (fn [[key action]]
-            {:key key
-             :fn (create-action-trigger action)}))))
+      (map (fn [item]
+            {:key (. item :key)
+             :fn (create-action-trigger item)}))))
 
 (fn parse-menu-bindings
  [items]
  (->> (query-bindings :menu items)
-      (map (fn [[key _]]
+      (map (fn [{:key key}]
             {:key key
              :fn (create-menu-trigger key)}))))
 
@@ -239,18 +303,6 @@
             :strokeWidth 0}
            99999)))
 
-(fn clear-timeout
- []
- (when timeout
-  (: timeout :stop)
-  (set timeout nil)))
-
-(fn set-timeout
-  []
-  (let [timer (hs.timer.doAfter 3 deactivate-modal)]
-    (clear-timeout)
-    (set timeout timer)))
-
 (fn init
   [config]
   (set-config config)
@@ -291,7 +343,6 @@
                                   (join "," prev-paths))))
       (let [menu (get-menu config current-paths)
             {:menu items} menu]
-        (print "menu: " (hs.inspect items))
         (clear-bindings bindings)
         (set-bindings (bind-keys items))
         ;; breaks here
