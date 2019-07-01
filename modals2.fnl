@@ -3,20 +3,27 @@
 (local log (hs.logger.new 'modals2.fnl', 'debug'))
 (var timeout nil)
 
-(global modal-paths
-        [[:space {:title "Alfred"
-                  :action "modals2/activate-alfred"}]
-         [:m {:title "Multimedia"
-              :menu [[:s {:title "Play or Pause"
-                          :action "multimedia/play-or-pause"}]]}]
-         [:z {:title "Zoom"
-              :menu [[:m {:title "Mute or Unmute Audio"
-                          :action "zoom/mute-or-unmute"}]]}]])
+(global config
+        {:title "Main Menu"
+         :menu [{:key :space
+                 :title "Alfred"
+                 :action "modals2/activate-alfred"}
+                {:key :m
+                 :title "Multimedia"
+                 :menu [{:key :s
+                         :title "Play or Pause"
+                         :action "multimedia/play-or-pause"}]}
+                {:key :z
+                 :title "Zoom"
+                 :menu [{:key :m
+                         :title "Mute or Unmute Audio"
+                         :action "zoom/mute-or-unmute"}]}]}
+
 (global state
         (atom.new {:route []
                    :active false
                    :modals {}
-                   :bindings []}))
+                   :bindings nil}))
 
 (fn seq?
   [tbl]
@@ -53,6 +60,20 @@
    xs)
   []
   tbl))
+
+(fn find
+ [f tbl]
+ (do
+   (var done? false)
+   (var item nil)
+   (var i 1)
+   (while (and (not done?) (<= i (# tbl)))
+     (let [v (. tbl i)]
+       (when (f v)
+         (set done? true)
+         (set item v)))
+     (set i (+ i 1)))
+   item))
 
 (fn join
   [sep list]
@@ -147,15 +168,15 @@
  [action]
  (let [[file fn-name] (split "/" action)]
    (fn []
+    (deactivate-modal)
     (let [module (require file)]
-      (print "action " action)
-      (deactivate-modal)
-      ((. module fn-name))))))
+      (: module fn-name)))))
 
 (fn create-menu-trigger
  [key]
  (fn []
-  (let [route (.. (atom.deref state) :route)]
+  (let [route (. (atom.deref state) :route)]
+    (hs.alert.closeAll 0)
     (activate-modal (concat [] route [key])))))
 
 (fn query-bindings
@@ -185,25 +206,24 @@
   (concat [] action-bindings menu-bindings)))
 
 (fn clear-bindings
- [bindings]
- (print "Clear Bindings")
- (when bindings
-   (each [_ binding (ipairs bindings)]
-    (when (and binding (. binding :disable))
-      (print "deleting binding" (hs.inspect binding))
-      (hs.hotkey.deleteAll [] (. binding :idx))))))
-      ;(: binding :disable)))))
+ [clear-bindings]
+ (when clear-bindings
+   (clear-bindings)))
 
-(fn bind-key
- [{:key key :fn f}]
- (hs.hotkey.bind [] key f))
-
-(fn create-bindings
+(fn bind-keys
  [routes]
- (print "Set Bindings")
- (set-bindings (->> routes
-                    (parse-bindings)
-                    (map bind-key))))
+ (let [bindings (->> routes
+                     (parse-bindings))
+       modal (hs.hotkey.modal.new [] nil)]
+   (each [_ {:key key :fn f} (ipairs bindings)]
+      (: modal :bind [] key f))
+   (: modal :bind [] :ESCAPE deactivate-modal)
+   (: modal :enter)
+   (fn destroy-bindings
+    []
+    (when modal
+      (: modal :exit)
+      (: modal :delete)))))
 
 (fn show-modal-menu
   [routes paths]
@@ -218,15 +238,6 @@
             :radius 0
             :strokeWidth 0}
            99999)))
-
-(fn unbind-escape
- []
- (hs.hotkey.deleteAll [] :ESCAPE))
-
-(fn bind-escape
- []
- (unbind-escape)
- (hs.hotkey.bind [] :ESCAPE deactivate-modal))
 
 (fn clear-timeout
  []
@@ -250,30 +261,51 @@
   []
   (windows.activate-app "Alfred 4"))
 
+(fn find-menu
+  [target menus]
+  (find
+   (fn [[key item]]
+     (and (= key target)
+          (. item :menu)))
+   menus))
+
+(fn get-menu
+  [menus paths]
+  (reduce
+    (fn [current key]
+      (let [item (find-menu key current)]
+        (. item 2 :menu)))
+    menus
+    paths))
+    
 (atom.add-watch
   state :show-modals
   (fn show-modals
     [{:active active-now :route current-route :modals modals :bindings bindings}
      {:active was-active :route prev-route}]
-    (print "show-modals" active-now was-active)
     (when (or (and active-now (~= active-now was-active))
-              (~= (join "," current-route) (join "," prev-route)))
-      (clear-bindings bindings)
-      (create-bindings modals)
-      (show-modal-menu modals current-route)
-      (bind-escape)
-      (set-timeout))))
+              (and active-now (~= (join "," current-route) (join "," prev-route))))
+      (let [menu (get-menu modals current-route)]
+        (clear-bindings bindings)
+        (set-bindings (bind-keys menu))
+        (show-modal-menu menu current-route)
+        (set-timeout)))))
 
 (atom.add-watch
   state :hide-modals
   (fn show-modals
     [{:active active-now :bindings bindings} {:active was-active}]
-    (print "hide-modals" active-now was-active)
     (when (and (not active-now) (~= active-now was-active))
+     (hs.alert.closeAll 0)
      (clear-bindings bindings)
-     (hs.alert.closeAll)
-     (unbind-escape)
      (clear-timeout))))
+
+
+(atom.add-watch
+  state :log-state
+  (fn log-state
+   [state]
+   (print "state: " (hs.inspect state))))
 
 
 {:init            init
