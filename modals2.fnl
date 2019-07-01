@@ -231,11 +231,14 @@
  [{:action action :repeatable repeatable}]
  (let [[file fn-name] (split "/" action)]
    (fn []
+    (print "Activated trigger: Deactivating modal")
     (if repeatable
       (set-timeout)
 			(deactivate-modal))
-    (let [module (require file)]
-      (: module fn-name)))))
+    (hs.timer.doAfter 0.01
+     (fn []
+        (let [module (require file)]
+          (: module fn-name)))))))
 
 (fn create-menu-trigger
  [key]
@@ -341,6 +344,7 @@
     (when (or (and active-now (~= active-now was-active))
               (and active-now (~= (join "," current-paths)
                                   (join "," prev-paths))))
+      (print "Activating modal")
       (let [menu (get-menu config current-paths)
             {:menu items} menu]
         (clear-bindings bindings)
@@ -352,6 +356,7 @@
   (fn show-modals
     [{:active active-now :bindings bindings} {:active was-active}]
     (when (and (not active-now) (~= active-now was-active))
+     (print "Deactivating modal")
      (hs.alert.closeAll 0)
      (clear-bindings bindings)
      (clear-timeout))))
@@ -361,7 +366,8 @@
   state :log-state
   (fn log-state
    [state]
-   (print "state: " (hs.inspect state))))
+   state))
+   ;(print "state: " (hs.inspect state))))
 
 
 {:init            init
