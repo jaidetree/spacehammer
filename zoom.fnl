@@ -48,6 +48,8 @@
  (let [zoom (get-zoom)]
   (when (: zoom :findMenuItem ["Meeting" "Exit Minimal View"])
     (: zoom :selectMenuItem ["Meeting" "Exit Minimal View"]))
+  (when (: zoom :findMenuItem ["Meeting" "Stop Share"])
+    (: zoom :selectMenuItem ["Meeting" "Stop Share"]))
   (let [win  (: zoom :findWindow "Zoom Meeting ID: .*")]
     (: win :close))))
 
@@ -56,7 +58,7 @@
 ;;;;;;;;;;;;;;;;;;
 
 (hyper.bind :a mute-or-unmute-audio)
- 
+
 {:mute-or-unmute-audio mute-or-unmute-audio
  :start-or-stop-video start-or-stop-video
  :start-or-stop-sharing start-or-stop-sharing
