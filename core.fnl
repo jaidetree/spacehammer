@@ -52,7 +52,7 @@
 (local modal (require :modals2))
 (modal.init modal.config)
 
-(require :statemachine2)
+(require :statemachine3)
 
 
 ;;;;;;;;;;;;
