@@ -35,7 +35,8 @@
   (let [prev-value (deref atom)
         next-value (f (copy prev-value) (table.unpack [...]))]
     (set atom.state next-value)
-    (notify-watchers atom next-value prev-value)))
+    (notify-watchers atom next-value prev-value)
+    atom))
 
 {:atom atom
  :new atom

@@ -2,34 +2,47 @@
 (local hyper (require :hyper))
 (local {:merge merge} (require :functional))
 
-
-(fn update-state
-  [state-key action-name action-fn data]
-  (action-fn state data)
-  (if action-fn
-      (action-fn state data)
-      (do
-        (print (string.format "ERROR: Could not %s from %s state"
-                              action-name state-key)))))
-
+"
+Transition
+Takes an action fn, state, and extra action data
+Returns updated state
+"
 (fn transition
   [action-fn state data]
   (action-fn state data))
 
-
+"
+Update State
+Takes a state atom and an update table to merge
+Updates the state-atom by merging the update table into previous state.
+Returns the state-atom.
+"
 (fn update-state
   [state-atom update]
   (atom.swap!
     state-atom
     (fn [state] (merge {} state update))))
 
-
-(fn update-error
+"
+Dispatch Error
+Prints an error explaining that we are not able to perform the target
+action while in the current state.
+"
+(fn dispatch-error
   [current-state-key action-name]
   (print (string.format "ERROR: Could not %s from %s state"
                         current-state-key action-name)))
 
+"
+Creates Dispatcher
+Creates a dispatcher function to update the machine state atom.
+If an update cannot be performed an error is printed to console.
 
+Takes a table of states, a state-atom, and a state-key used to store the current
+state keyword/string.
+Returns a function that can be used as a method of the fsm to transition to
+another state.
+"
 (fn create-dispatcher
   [states state-atom state-key]
   (fn dispatch
@@ -45,10 +58,34 @@
             (update-state state-atom update)
             true)
           (do
-            (update-error key action)
+            (dispatch-error key action)
             false)))))
 
 
+"
+Create Machine
+Creates a finite-state-machine based on the table of given states.
+Takes a map-table of states and actions, an initial state table, and a key
+to specify which key stores the current state string.
+Returns an fsm table that manages state and can dispatch actions.
+
+Example:
+
+(local states
+       {:idle   {:activate   idle->active
+                 :enter-app  idle->in-app}
+        :active {:deactivate active->idle-or-in-app
+                 :activate   active->active
+                 :enter-app  active->active
+                 :leave-app  active->active}
+        :in-app {:activate   in-app->active
+                 :enter-app  in-app->in-app
+                 :leave-app  in-app->idle}})
+
+(local fsm (create-machine states {:state :idle} :state))
+(: fsm :dispatch :activate {:extra :data})
+(print \"current-state: \" (hs.inspect (atom.deref (. fsm :state))))
+"
 (fn create-machine
   [states initial-state state-key]
   (let [machine-state (atom.new initial-state)]
@@ -56,3 +93,5 @@
      :states states
      :state machine-state}))
 
+{:create-machine create-machine
+ :new create-machine}
