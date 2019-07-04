@@ -46,7 +46,7 @@ another state.
 (fn create-dispatcher
   [states state-atom state-key]
   (fn dispatch
-    [_ action data]
+    [action data]
     (let [state (atom.deref state-atom)
           key (. state state-key)
           update (-?> states
@@ -83,8 +83,8 @@ Example:
                  :leave-app  in-app->idle}})
 
 (local fsm (create-machine states {:state :idle} :state))
-(: fsm :dispatch :activate {:extra :data})
-(print \"current-state: \" (hs.inspect (atom.deref (. fsm :state))))
+(fsm.dispatch :activate {:extra :data})
+(print \"current-state: \" (hs.inspect (atom.deref (fsm.state))))
 "
 (fn create-machine
   [states initial-state state-key]
@@ -93,5 +93,4 @@ Example:
      :states states
      :state machine-state}))
 
-{:create-machine create-machine
- :new create-machine}
+{:new create-machine}

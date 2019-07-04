@@ -12,7 +12,7 @@
 (set hs.window.animationDuration 0.2)
 
 (global alert hs.alert.show)
-(global log (fn [s] (hs.alert.show (hs.inspect s) 5)))
+(global log (fn [s] (print (hs.inspect s) 5)))
 (global fw hs.window.focusedWindow)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49,10 +49,8 @@
 ;; Initialize modals
 ;;;;;;;;;;;;;;;;;;;;
 
-(local modal (require :modals2))
+(local modal (require :modals3))
 (modal.init modal.config)
-
-(require :statemachine3)
 
 
 ;;;;;;;;;;;;
