@@ -105,7 +105,8 @@
     (fn destroy-task
       []
       (when task
-        (: task :stop)))))
+        (: task :stop)
+        nil))))
 
 (fn activate-modal
   [menu-key]
