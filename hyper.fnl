@@ -2,7 +2,7 @@
 ;; HYPER MODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(global hyper (hs.hotkey.modal.new [] 'F17'))
+(global hyper (hs.hotkey.modal.new [] :F17))
 
 (fn enter-hyper-mode
   []
@@ -24,4 +24,3 @@
                           (set hyper.triggered true))))
 
 {:bind hyper-bind}
-
