@@ -13,69 +13,71 @@
 (global config
         {:title "Main Menu"
          :items [{:key :space
-                 :title "Alfred"
-                 :action "modals2/activate-alfred"}
-                {:key :m
-                 :title "Multimedia"
-                 :items [{:key :s
-                         :title "Play or Pause"
-                         :action "multimedia/play-or-pause"}
-												{:key :h
-                         :title "Prev Track"
-                         :action "multimedia/prev-track"}
-												{:key :l
-                         :title "Next Track"
-                         :action "multimedia/next-track"}
-												{:key :j
-                         :title "Volume Down"
-                         :action "multimedia/volume-down"
-                         :repeatable true}
-												{:key :k
-                         :title "Volume Up"
-                         :action "multimedia/volume-up"
-                         :repeatable true}]}
-                {:key :w
-                 :title "Window"
-                 :items [{:key :1
-                         :title "Full-screen"
-                         :action "mosaic/full-size"
-                         :repeatable true}
-                        {:key :2
-                         :title "Left Half"
-                         :action "mosaic/left-half"
-                         :repeatable true}
-                        {:key :3
-                         :title "Right Half"
-                         :action "mosaic/right-half"
-                         :repeatable true}
-                        {:key :4
-                         :title "Left Big"
-                         :action "mosaic/left-big"
-                         :repeatable true}
-                        {:key :5
-                         :title "Right Small"
-                         :action "mosaic/right-small"
-                         :repeatable true}]}
-                {:key :z
-                 :title "Zoom"
-                 :items [{:key :a
-                         :title "Mute or Unmute Audio"
-                         :action "zoom/mute-or-unmute-audio"}
-                        {:key :v
-                         :title "Start or Stop Video"
-                         :action "zoom/start-or-stop-video"}
-                        {:key :s
-                         :title "Start or Stop Sharing"
-                         :action "zoom/start-or-stop-sharing"}
-                        {:key :f
-                         :title "Pause or Resume Sharing"
-                         :action "zoom/pause-or-resume-sharing"}
-                        {:key :i
-                         :title "Invite..."
-                         :action "zoom/invite"}
-                        {:key :l
-                         :title "End Meeting"
-                         :action "zoom/end-meeting"}]}]})
+                  :title "Alfred"
+                  :action "modals2/activate-alfred"}
+                 {:key :m
+                  :title "Multimedia"
+                  :items [{:key :s
+                           :title "Play or Pause"
+                           :action "multimedia/play-or-pause"}
+                          {:key :h
+                           :title "Prev Track"
+                           :action "multimedia/prev-track"}
+                          {:key :l
+                           :title "Next Track"
+                           :action "multimedia/next-track"}
+                          {:key :j
+                           :title "Volume Down"
+                           :action "multimedia/volume-down"
+                           :repeatable true}
+                          {:key :k
+                           :title "Volume Up"
+                           :action "multimedia/volume-up"
+                           :repeatable true}]}
+                 {:key :w
+                  :title "Window"
+                  :items [{:key :l
+                           :title "Layouts"
+                           :items [{:key :1
+                                    :title "Full-screen"
+                                    :action "mosaic/full-size"
+                                    :repeatable true}
+                                   {:key :2
+                                    :title "Left Half"
+                                    :action "mosaic/left-half"
+                                    :repeatable true}
+                                   {:key :3
+                                    :title "Right Half"
+                                    :action "mosaic/right-half"
+                                    :repeatable true}
+                                   {:key :4
+                                    :title "Left Big"
+                                    :action "mosaic/left-big"
+                                    :repeatable true}
+                                   {:key :5
+                                    :title "Right Small"
+                                    :action "mosaic/right-small"
+                                    :repeatable true}]}]}
+                 {:key :z
+                  :title "Zoom"
+                  :items [{:key :a
+                           :title "Mute or Unmute Audio"
+                           :action "zoom/mute-or-unmute-audio"}
+                          {:key :v
+                           :title "Start or Stop Video"
+                           :action "zoom/start-or-stop-video"}
+                          {:key :s
+                           :title "Start or Stop Sharing"
+                           :action "zoom/start-or-stop-sharing"}
+                          {:key :f
+                           :title "Pause or Resume Sharing"
+                           :action "zoom/pause-or-resume-sharing"}
+                          {:key :i
+                           :title "Invite..."
+                           :action "zoom/invite"}
+                          {:key :l
+                           :title "End Meeting"
+                           :action "zoom/end-meeting"}]}]})
 
 (global fsm nil)
 
@@ -95,9 +97,9 @@
   [items]
   (let [max (max-length items)]
     (map
-      (fn [[key action]]
-        (.. (pad-str " " max key) " - " action))
-      items)))
+     (fn [[key action]]
+       (.. (pad-str " " max key) " - " action))
+     items)))
 
 (fn timeout
   [f]
@@ -121,16 +123,16 @@
   (fsm.dispatch :start-timeout))
 
 (fn create-action-trigger
- [{:action action :repeatable repeatable}]
- (let [[file fn-name] (split "/" action)]
-   (fn []
-    (if repeatable
-      (start-modal-timeout)
-			(deactivate-modal))
-    (hs.timer.doAfter 0.01
-     (fn []
-        (let [module (require file)]
-          (: module fn-name)))))))
+  [{:action action :repeatable repeatable}]
+  (let [[file fn-name] (split "/" action)]
+    (fn []
+      (if repeatable
+        (start-modal-timeout)
+        (deactivate-modal))
+      (hs.timer.doAfter 0.01
+                        (fn []
+                          (let [module (require file)]
+                            (: module fn-name)))))))
 
 (fn create-menu-trigger
   [key]
@@ -138,42 +140,42 @@
     (fsm.dispatch :activate key)))
 
 (fn query-bindings
- [type-key items]
- (->> items
-      (filter (fn [item] (. item type-key)))))
+  [type-key items]
+  (->> items
+       (filter (fn [item] (. item type-key)))))
 
 (fn parse-action-bindings
- [menu]
- (->> (query-bindings :action menu)
-      (map (fn [item]
-            {:key (. item :key)
-             :fn (create-action-trigger item)}))))
+  [menu]
+  (->> (query-bindings :action menu)
+       (map (fn [item]
+              {:key (. item :key)
+               :fn (create-action-trigger item)}))))
 
 (fn parse-menu-bindings
- [menu]
- (->> (query-bindings :items menu)
-      (map (fn [{:key key}]
-            {:key key
-             :fn (create-menu-trigger key)}))))
+  [menu]
+  (->> (query-bindings :items menu)
+       (map (fn [{:key key}]
+              {:key key
+               :fn (create-menu-trigger key)}))))
 
 (fn parse-bindings
- [items]
- (let [action-bindings (parse-action-bindings items)
-       menu-bindings (parse-menu-bindings items)]
-  (concat [] action-bindings menu-bindings)))
+  [items]
+  (let [action-bindings (parse-action-bindings items)
+        menu-bindings (parse-menu-bindings items)]
+    (concat [] action-bindings menu-bindings)))
 
 (fn clear-bindings
- [clear-bindings]
- (when clear-bindings
-   (clear-bindings)))
+  [clear-bindings]
+  (when clear-bindings
+    (clear-bindings)))
 
 (fn bind-keys
   [items]
   (let [bindings (-> items
-                   (parse-bindings))
-         modal (hs.hotkey.modal.new [] nil)]
+                     (parse-bindings))
+        modal (hs.hotkey.modal.new [] nil)]
     (each [_ {:key key :fn f} (ipairs bindings)]
-      (: modal :bind [] key f))
+          (: modal :bind [] key f))
     (: modal :bind [] :ESCAPE deactivate-modal)
     (: modal :enter)
     (fn destroy-bindings
@@ -187,7 +189,7 @@
   [menu]
   (let [items (->> (. menu :items)
                    (map (fn [item]
-                         [(. item :key) (. item :title)]))
+                          [(. item :key) (. item :title)]))
                    (align-columns))
         text (join "\n" items)]
     (hs.alert.closeAll)
@@ -213,20 +215,21 @@
 (fn get-menu
   [config paths]
   (reduce
-    (fn [{:items items} key]
-      (let [menu (find-menu key items)]
-        menu))
-    config
-    paths))
+   (fn [{:items items} key]
+     (let [menu (find-menu key items)]
+       menu))
+   config
+   paths))
 
 (fn idle->active
   [state data]
   (let [{:config config
-         :stop-timeout stop-timeout} state
-         menu (get-menu config [])]
+         :menu menu} state
+        menu (get-menu (or menu config) [])]
     (show-modal-menu menu)
     {:status :active
-      :unbind-keys (bind-keys menu.items)}))
+     :menu menu
+     :unbind-keys (bind-keys menu.items)}))
 
 (fn idle->enter-app
   [state data]
@@ -242,18 +245,25 @@
   (when state.stop-timeout
     (state.stop-timeout))
   {:status :idle
+   :stop-timeout :nil
+   :menu :nil
    :unbind-keys (state.unbind-keys)})
 
 (fn active->active
   [state menu-key]
   (let [{:config config
-          :stop-timeout stop-timeout
-          :unbind-keys unbind-keys} state
-         menu (get-menu config [menu-key])]
+         :menu menu
+         :stop-timeout stop-timeout
+         :unbind-keys unbind-keys} state
+        menu (get-menu (or menu config) [menu-key])]
     (unbind-keys)
     (show-modal-menu menu)
+    (when stop-timeout
+      (stop-timeout))
     {:status :active
-      :unbind-keys (bind-keys menu.items)}))
+     :stop-timeout :nil
+     :menu menu
+     :unbind-keys (bind-keys menu.items)}))
 
 (fn active->timeout
   [state]
@@ -271,22 +281,23 @@
 
 
 (local states
-  {:idle   {:activate   idle->active
-             :enter-app idle->enter-app
-             :leave-app idle->leave-app}
-    :active {:deactivate active->idle
-              :activate   active->active
-              :enter-app  active->enter-app
-              :leave-app  active->leave-app
-              :start-timeout active->timeout}})
+       {:idle   {:activate   idle->active
+                 :enter-app idle->enter-app
+                 :leave-app idle->leave-app}
+        :active {:deactivate active->idle
+                 :activate   active->active
+                 :enter-app  active->enter-app
+                 :leave-app  active->leave-app
+                 :start-timeout active->timeout}})
 
 (fn start-logger
   [fsm]
   (atom.add-watch
-    fsm.state :log-state
-    (fn log-state
-      [state]
-      (print "state is now: " state.status))))
+   fsm.state :log-state
+   (fn log-state
+     [state]
+     (print "state is now: " state.status))))
+                                        ;(print "menu: " (hs.inspect state.menu)))))
 
 (fn init
   [config]
@@ -295,12 +306,13 @@
                        :config config
                        :app nil
                        :menu nil
-                       :unbind-keys nil}]
+                       :unbind-keys nil
+                       :stop-timeout nil}]
     (global fsm (statemachine.new states initial-state :status))
     (hs.hotkey.bind [:cmd] :space activate-modal)
     (start-logger fsm)))
 
 
 {:init            init
-  :activate-alfred activate-alfred
-  :config          config}
+ :activate-alfred activate-alfred
+ :config          config}

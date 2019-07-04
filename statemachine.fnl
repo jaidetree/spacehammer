@@ -1,6 +1,8 @@
 (local atom (require :atom))
 (local hyper (require :hyper))
-(local {:merge merge} (require :functional))
+(local {:filter filter
+         :map map
+         :merge merge} (require :functional))
 
 "
 Transition
@@ -10,6 +12,24 @@ Returns updated state
 (fn transition
   [action-fn state data]
   (action-fn state data))
+
+
+"
+Remove Nils
+Takes a dest table and an update.
+For each key in update set to :nil, it is removed from the tbl.
+Returns a mutated tbl with :nil keys removed.
+"
+(fn remove-nils
+  [tbl update]
+  (let [keys (->> update
+               (map (fn [v k] [v k]))
+               (filter (fn [[v _]]
+                         (= v :nil)))
+               (map (fn [[_ k]] k)))]
+    (each [_ k (ipairs keys)]
+      (tset tbl k nil))
+    tbl))
 
 "
 Update State
@@ -21,7 +41,10 @@ Returns the state-atom.
   [state-atom update]
   (atom.swap!
     state-atom
-    (fn [state] (merge {} state update))))
+    (fn [state]
+      (-> {}
+          (merge state update)
+          (remove-nils update)))))
 
 "
 Dispatch Error
