@@ -224,7 +224,7 @@
          :stop-timeout stop-timeout} state
          menu (get-menu config [])]
     (show-modal-menu menu)
-    {:state :active
+    {:status :active
       :unbind-keys (bind-keys menu.items)}))
 
 (fn idle->enter-app
@@ -240,7 +240,7 @@
   (hs.alert.closeAll)
   (when state.stop-timeout
     (state.stop-timeout))
-  {:state :idle
+  {:status :idle
    :unbind-keys (state.unbind-keys)})
 
 (fn active->active
@@ -251,11 +251,13 @@
          menu (get-menu config [menu-key])]
     (unbind-keys)
     (show-modal-menu menu)
-    {:state :active
-      :unbind-keys (bind-keys menu)}))
+    {:status :active
+      :unbind-keys (bind-keys menu.items)}))
 
 (fn active->timeout
   [state]
+  (when state.stop-timeout
+    (state.stop-timeout))
   {:stop-timeout (timeout deactivate-modal)})
 
 (fn active->enter-app
@@ -283,17 +285,17 @@
     fsm.state :log-state
     (fn log-state
       [state]
-      (print "state is now: " state.state))))
+      (print "state is now: " state.status))))
 
 (fn init
   [config]
 
-  (let [initial-state {:state :idle
+  (let [initial-state {:status :idle
                        :config config
                        :app nil
                        :menu nil
                        :unbind-keys nil}]
-    (global fsm (statemachine.new states initial-state :state))
+    (global fsm (statemachine.new states initial-state :status))
     (hs.hotkey.bind [:cmd] :space activate-modal)
     (start-logger fsm)))
 
