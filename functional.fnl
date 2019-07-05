@@ -47,6 +47,7 @@
     (set result (f result v k)))
   result)
 
+
 ;; Reducers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -90,8 +91,11 @@
   []
   [...]))
 
-{
- :concat concat
+
+;; Exports
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+{:concat concat
  :filter filter
  :find find
  :join join
@@ -102,5 +106,4 @@
  :seq seq
  :seq? seq?
  :split split
- :tap tap
-}
+ :tap tap}
