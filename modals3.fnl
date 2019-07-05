@@ -277,9 +277,9 @@
   (let [{:app current-app
          :unbind-app-keys unbind-app-keys} state]
     (if (= current-app app-name)
-        (when unbind-app-keys (unbind-app-keys))
-        {:app :nil
-         :unbind-app-keys :nil}
+        (do (when unbind-app-keys (unbind-app-keys))
+            {:app :nil
+             :unbind-app-keys :nil})
         nil)))
 
 
