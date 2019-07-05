@@ -91,9 +91,11 @@
                 {:key "Emacs"
                  :items [{:key :h
                           :title "Say hi"
-                          :action "actions/say-hi"}]}]})
+                          :action (fn []
+                                    (alert "Hi there!"))}]}]})
 
-(global fsm nil)
+(var fsm nil)
+
 
 (fn max-length
   [items]
@@ -102,10 +104,12 @@
    0
    items))
 
+
 (fn pad-str
   [char max str]
   (let [diff (- max (# str))]
     (.. str (string.rep char diff))))
+
 
 (fn align-columns
   [items]
@@ -114,6 +118,7 @@
      (fn [[key action]]
        (.. (pad-str " " max key) " - " action))
      items)))
+
 
 (fn timeout
   [f]
@@ -124,39 +129,62 @@
         (: task :stop)
         nil))))
 
+
 (fn activate-modal
   [menu-key]
   (fsm.dispatch :activate menu-key))
+
 
 (fn deactivate-modal
   []
   (fsm.dispatch :deactivate))
 
+
 (fn start-modal-timeout
   []
   (fsm.dispatch :start-timeout))
 
+
+(fn create-action-fn
+  [action]
+  (let [[file fn-name] (split "/" action)]
+    (fn []
+      (let [module (require file)]
+        (: module fn-name)))))
+
+(fn parse-action-fn
+  [action]
+  (match (type action)
+    :function action
+    :string (create-action-fn action)
+    _         (do
+                (print (string.format
+                        "ERROR: Could not create action handler for %s"
+                        (hs.inspect action)))
+                (fn [] true))))
+
+
 (fn create-action-trigger
   [{:action action :repeatable repeatable}]
-  (let [[file fn-name] (split "/" action)]
+  (let [action-fn (parse-action-fn action)]
     (fn []
       (if repeatable
           (start-modal-timeout)
           (deactivate-modal))
-      (hs.timer.doAfter 0.01
-                        (fn []
-                          (let [module (require file)]
-                            (: module fn-name)))))))
+      (hs.timer.doAfter 0.01 action-fn))))
+
 
 (fn create-menu-trigger
   [key]
   (fn []
     (fsm.dispatch :activate key)))
 
+
 (fn query-bindings
   [type-key items]
   (->> items
        (filter (fn [item] (. item type-key)))))
+
 
 (fn parse-action-bindings
   [menu]
@@ -165,6 +193,7 @@
               {:key (. item :key)
                :fn (create-action-trigger item)}))))
 
+
 (fn parse-menu-bindings
   [menu]
   (->> (query-bindings :items menu)
@@ -172,16 +201,19 @@
               {:key key
                :fn (create-menu-trigger key)}))))
 
+
 (fn parse-bindings
   [items]
   (let [action-bindings (parse-action-bindings items)
         menu-bindings (parse-menu-bindings items)]
     (concat [] action-bindings menu-bindings)))
 
+
 (fn clear-bindings
   [clear-bindings]
   (when clear-bindings
     (clear-bindings)))
+
 
 (fn bind-keys
   [items]
@@ -198,6 +230,7 @@
         (: modal :exit)
         (: modal :delete))
       nil)))
+
 
 (fn show-modal-alert
   [menu]
@@ -370,6 +403,7 @@
         hs.application.watcher.terminated  :terminated
         hs.application.watcher.unhidden    :unhidden})
 
+
 (fn watch-apps
   [app-name event app]
   (let [event-type (. app-events event)]
@@ -377,6 +411,7 @@
         (fsm.dispatch :enter-app app-name)
         (= event-type :deactivated)
         (fsm.dispatch :leave-app app-name))))
+
 
 (fn start-logger
   [fsm]
@@ -387,6 +422,7 @@
      (print "state is now: " state.status)
      (print "app is now: " state.app))))
 
+
 (fn active-app-name
   []
   (let [app (hs.application.frontmostApplication)]
@@ -394,9 +430,9 @@
         (: app :name)
         nil)))
 
+
 (fn init
   [config]
-
   (let [initial-state {:status :idle
                        :config config
                        :app (active-app-name)
@@ -405,7 +441,7 @@
                        :stop-timeout nil}
         menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
         app-watcher (hs.application.watcher.new watch-apps)]
-    (global fsm (statemachine.new states initial-state :status))
+    (set fsm (statemachine.new states initial-state :status))
     (start-logger fsm)
     (: app-watcher :start)
     (fn cleanup []
