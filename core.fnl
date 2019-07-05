@@ -36,9 +36,11 @@
 
 (: config-file-pathwatcher :start)
 
-;;;;;;;;;;;;;;;
-;; Load modules
-;;;;;;;;;;;;;;;
+(local config (require :config))
+
+;;;;;;;;;;;;;;;;;;
+;; Load modules ;;
+;;;;;;;;;;;;;;;;;;
 
 (local modules [:mosaic
                 :zoom])
@@ -46,36 +48,13 @@
 (each [_ module (ipairs modules)]
   (require module))
 
-;;;;;;;;;;;;;;;;;;;;
-;; Initialize modals
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Initialize modals ;;
+;;;;;;;;;;;;;;;;;;;;;;;
 
 (local modal (require :modals3))
-(modal.init modal.config)
+(modal.init config)
 
-
-;;;;;;;;;;;;
-;; modals ;;
-;;;;;;;;;;;;
-; (local modal (require :modal))
-
-; (each [_ n (pairs [:windows
-;                    :apps
-;                    :multimedia
-;                    :emacs
-;                    :chrome
-;                    :grammarly
-;   (let [module (require n)]
-;     (when module.add-state
-;       (module.add-state modal))
-;     (when module.add-app-specific
-;       (module.add-app-specific))))
-
-; (let [state-machine (modal.create-machine)]
-;   (: state-machine :toMain))
-
-
-; (require :keybindings)
 
 ;; toggle hs.console with Ctrl+Cmd+~
 (hs.hotkey.bind

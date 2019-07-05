@@ -11,90 +11,11 @@
         :split split
         :tap tap} (require :functional))
 
-(global config
-        {:title "Main Menu"
-         :items [{:key :space
-                  :title "Alfred"
-                  :action "modals2/activate-alfred"}
-                 {:key :m
-                  :title "Multimedia"
-                  :items [{:key :s
-                           :title "Play or Pause"
-                           :action "multimedia/play-or-pause"}
-                          {:key :h
-                           :title "Prev Track"
-                           :action "multimedia/prev-track"}
-                          {:key :l
-                           :title "Next Track"
-                           :action "multimedia/next-track"}
-                          {:key :j
-                           :title "Volume Down"
-                           :action "multimedia/volume-down"
-                           :repeatable true}
-                          {:key :k
-                           :title "Volume Up"
-                           :action "multimedia/volume-up"
-                           :repeatable true}]}
-                 {:key :w
-                  :title "Window"
-                  :items [{:key :l
-                           :title "Layouts"
-                           :items [{:key :1
-                                    :title "Full-screen"
-                                    :action "mosaic/full-size"
-                                    :repeatable true}
-                                   {:key :2
-                                    :title "Left Half"
-                                    :action "mosaic/left-half"
-                                    :repeatable true}
-                                   {:key :3
-                                    :title "Right Half"
-                                    :action "mosaic/right-half"
-                                    :repeatable true}
-                                   {:key :4
-                                    :title "Left Big"
-                                    :action "mosaic/left-big"
-                                    :repeatable true}
-                                   {:key :5
-                                    :title "Right Small"
-                                    :action "mosaic/right-small"
-                                    :repeatable true}]}]}
-                 {:key :z
-                  :title "Zoom"
-                  :items [{:key :a
-                           :title "Mute or Unmute Audio"
-                           :action "zoom/mute-or-unmute-audio"}
-                          {:key :v
-                           :title "Start or Stop Video"
-                           :action "zoom/start-or-stop-video"}
-                          {:key :s
-                           :title "Start or Stop Sharing"
-                           :action "zoom/start-or-stop-sharing"}
-                          {:key :f
-                           :title "Pause or Resume Sharing"
-                           :action "zoom/pause-or-resume-sharing"}
-                          {:key :i
-                           :title "Invite..."
-                           :action "zoom/invite"}
-                          {:key :l
-                           :title "End Meeting"
-                           :action "zoom/end-meeting"}]}]
-         :apps [{:key "Hammerspoon"
-                 :items [{:key :r
-                          :title "Reload Config"
-                          :action "actions/reload-config"}
-                         {:key :c
-                          :title "Console"
-                          :items [{:key :c
-                                   :title "Clear"
-                                   :action "actions/clear-console"}]}]}
-                {:key "Emacs"
-                 :items [{:key :h
-                          :title "Say hi"
-                          :action (fn []
-                                    (alert "Hi there!"))}]}]})
 
 (var fsm nil)
+
+;; Menu Column Alignment
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (fn max-length
@@ -120,6 +41,9 @@
      items)))
 
 
+;; Timers & Delays
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (fn timeout
   [f]
   (let [task (hs.timer.doAfter 2 f)]
@@ -128,6 +52,10 @@
       (when task
         (: task :stop)
         nil))))
+
+
+;; Event Dispatchers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (fn activate-modal
@@ -145,6 +73,10 @@
   (fsm.dispatch :start-timeout))
 
 
+;; Menu & Action Trigger Handlers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (fn create-action-fn
   [action]
   (let [[file fn-name] (split "/" action)]
@@ -152,7 +84,7 @@
       (let [module (require file)]
         (: module fn-name)))))
 
-(fn parse-action-fn
+(fn action->fn
   [action]
   (match (type action)
     :function action
@@ -166,7 +98,7 @@
 
 (fn create-action-trigger
   [{:action action :repeatable repeatable}]
-  (let [action-fn (parse-action-fn action)]
+  (let [action-fn (action->fn action)]
     (fn []
       (if repeatable
           (start-modal-timeout)
@@ -180,13 +112,17 @@
     (fsm.dispatch :activate key)))
 
 
+;; Key Bindings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (fn query-bindings
   [type-key items]
   (->> items
        (filter (fn [item] (. item type-key)))))
 
 
-(fn parse-action-bindings
+(fn bind-actions
   [menu]
   (->> (query-bindings :action menu)
        (map (fn [item]
@@ -194,7 +130,7 @@
                :fn (create-action-trigger item)}))))
 
 
-(fn parse-menu-bindings
+(fn bind-menus
   [menu]
   (->> (query-bindings :items menu)
        (map (fn [{:key key}]
@@ -202,23 +138,17 @@
                :fn (create-menu-trigger key)}))))
 
 
-(fn parse-bindings
+(fn menu->bindings
   [items]
-  (let [action-bindings (parse-action-bindings items)
-        menu-bindings (parse-menu-bindings items)]
+  (let [action-bindings (bind-actions items)
+        menu-bindings (bind-menus items)]
     (concat [] action-bindings menu-bindings)))
-
-
-(fn clear-bindings
-  [clear-bindings]
-  (when clear-bindings
-    (clear-bindings)))
 
 
 (fn bind-keys
   [items]
   (let [bindings (-> items
-                     (parse-bindings))
+                     (menu->bindings))
         modal (hs.hotkey.modal.new [] nil)]
     (each [_ {:key key :fn f} (ipairs bindings)]
       (: modal :bind [] key f))
@@ -232,7 +162,11 @@
       nil)))
 
 
-(fn show-modal-alert
+;; Display Modals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(fn modal-alert
   [menu]
   (let [items (->> (. menu :items)
                    (map (fn [item]
@@ -255,15 +189,14 @@
     (unbind-keys))
   (when stop-timeout
     (stop-timeout))
-  (show-modal-alert menu)
+  (modal-alert menu)
   {:menu menu
    :stop-timeout :nil
    :unbind-keys (bind-keys menu.items)})
 
 
-(fn activate-alfred
-  []
-  (windows.activate-app "Alfred 4"))
+;; Apps, Menus, & Config Navigation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (fn find-app
@@ -287,6 +220,10 @@
 (fn get-menu
   [parent group target]
   (find-menu target (. parent group)))
+
+
+;; State Transitions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (fn idle->active
@@ -383,6 +320,10 @@
         nil)))
 
 
+;; Finite State Machine States
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (local states
        {:idle   {:activate      idle->active
                  :enter-app     idle->enter-app
@@ -393,6 +334,9 @@
                  :leave-app     active->leave-app
                  :start-timeout active->timeout}})
 
+
+;; Watchers, Dispatchers, & Logging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local app-events
        {hs.application.watcher.activated   :activated
@@ -431,6 +375,9 @@
         nil)))
 
 
+;; Initialization
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (fn init
   [config]
   (let [initial-state {:status :idle
@@ -449,6 +396,4 @@
       (: app-watcher :stop))))
 
 
-{:init            init
- :activate-alfred activate-alfred
- :config          config}
+{:init init}
