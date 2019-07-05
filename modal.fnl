@@ -216,12 +216,17 @@
 
 (fn show-modal-menu
   [{:menu menu
+    :prev-menu prev-menu
     :unbind-keys unbind-keys
     :stop-timeout stop-timeout}]
   (when unbind-keys
     (unbind-keys))
   (when stop-timeout
     (stop-timeout))
+  (when (and prev-menu prev-menu.exit)
+    (: prev-menu :exit))
+  (when menu.enter
+    (: menu :enter))
   (modal-alert menu)
   {:menu menu
    :stop-timeout :nil
@@ -285,28 +290,32 @@
 
 (fn active->idle
   [state data]
-  (hs.alert.closeAll)
-  (when state.stop-timeout
-    (state.stop-timeout))
-  {:status :idle
-   :menu :nil
-   :stop-timeout :nil
-   :unbind-keys (state.unbind-keys)})
+  (let [{:menu prev-menu} state]
+    (hs.alert.closeAll)
+    (when state.stop-timeout
+      (state.stop-timeout))
+    (when (and prev-menu prev-menu.exit)
+      (: prev-menu :exit))
+    {:status :idle
+     :menu :nil
+     :stop-timeout :nil
+     :unbind-keys (state.unbind-keys)}))
 
 
 (fn active->active
   [state menu-key]
   (let [{:config config
-         :menu menu
+         :menu prev-menu
          :stop-timeout stop-timeout
          :unbind-keys unbind-keys} state
         menu (if menu-key
-                 (get-menu menu :items menu-key)
+                 (get-menu prev-menu :items menu-key)
                  config)]
     (merge state
            {:status :active}
            (show-modal-menu {:stop-timeout stop-timeout
                              :unbind-keys  unbind-keys
+                             :prev-menu    prev-menu
                              :menu         menu}))))
 
 
@@ -322,6 +331,7 @@
   (let [{:config config
          :app app
          :stop-timeout stop-timeout
+         :menu prev-menu
          :unbind-keys unbind-keys
          :unbind-app-keys unbind-app-keys} state
         menu (get-menu config :apps app-name)]
@@ -333,6 +343,7 @@
                   :unbind-app-keys (bind-app-keys menu.keys)}
                  (show-modal-menu {:stop-timeout stop-timeout
                                    :unbind-keys  unbind-keys
+                                   :prev-menu    prev-menu
                                    :menu         menu})))
         nil)))
 

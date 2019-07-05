@@ -23,6 +23,10 @@
          :action activate-alfred}
         {:key :m
          :title "Multimedia"
+         :enter (fn [menu]
+                  (print "Entering menu: " (hs.inspect menu)))
+         :exit (fn [menu]
+                 (print "Exiting menu: " (hs.inspect menu)))
          :items [{:key :s
                   :title "Play or Pause"
                   :action "multimedia:play-or-pause"}
@@ -93,6 +97,10 @@
 
 (local apps
        [{:key "Hammerspoon"
+         :enter (fn []
+                  (print "Entering Hammerspoon :D"))
+         :exit (fn []
+                 (print "Exiting Hammerspoon T_T"))
          :items [{:key :r
                   :title "Reload Config"
                   :action reload-config}
