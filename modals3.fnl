@@ -6,6 +6,7 @@
         :find find
         :join join
         :map map
+        :merge merge
         :reduce reduce
         :split split
         :tap tap} (require :functional))
@@ -200,6 +201,7 @@
 
 (fn show-modal-menu
   [menu]
+  (print "show-menu-modal" (hs.inspect menu))
   (let [items (->> (. menu :items)
                    (map (fn [item]
                           [(. item :key) (. item :title)]))
@@ -240,8 +242,7 @@
 (fn idle->active
   [state data]
   (let [{:config config
-         :app app
-         :menu menu} state
+         :app app} state
         menu (if app
                  (get-menu config :apps app)
                  config)]
@@ -271,8 +272,8 @@
   (when state.stop-timeout
     (state.stop-timeout))
   {:status :idle
-   :stop-timeout :nil
    :menu :nil
+   :stop-timeout :nil
    :unbind-keys (state.unbind-keys)})
 
 (fn active->active
@@ -281,15 +282,18 @@
          :menu menu
          :stop-timeout stop-timeout
          :unbind-keys unbind-keys} state
-        menu (get-menu menu :items menu-key)]
+        menu (if menu-key
+                 (get-menu menu :items menu-key)
+                 config)]
     (unbind-keys)
     (show-modal-menu menu)
     (when stop-timeout
       (stop-timeout))
-    {:status :active
-     :stop-timeout :nil
-     :menu menu
-     :unbind-keys (bind-keys menu.items)}))
+    (merge state
+           {:status :active
+            :stop-timeout :nil
+            :menu menu
+            :unbind-keys (bind-keys menu.items)})))
 
 (fn active->timeout
   [state]
@@ -298,12 +302,35 @@
   {:stop-timeout (timeout deactivate-modal)})
 
 (fn active->enter-app
-  [state data]
-  {})
+  [state app-name]
+  (let [{:config config
+         :app app
+         :stop-timeout stop-timeout
+         :unbind-keys unbind-keys} state
+        menu (get-menu config :apps app-name)]
+    (if menu
+        (do
+          (unbind-keys)
+          (show-modal-menu menu)
+          (when stop-timeout
+            (stop-timeout))
+          {:status :active
+           :app app-name
+           :stop-timeout :nil
+           :menu menu
+           :unbind-keys (bind-keys menu.items)})
+        nil)))
 
 (fn active->leave-app
-  [state data]
-  {})
+  [state app-name]
+  (let [{:app current-app
+         :unbind-keys unbind-keys} state]
+    (if (= current-app app-name)
+        (do
+          (tset state :menu nil)
+          (tset state :app nil)
+          (active->active state nil))
+        nil)))
 
 
 (local states
@@ -342,12 +369,19 @@
      (print "state is now: " state.status)
      (print "app is now: " state.app))))
 
+(fn active-app-name
+  []
+  (let [app (hs.application.frontmostApplication)]
+    (if app
+        (: app :name)
+        nil)))
+
 (fn init
   [config]
 
   (let [initial-state {:status :idle
                        :config config
-                       :app nil
+                       :app (active-app-name)
                        :menu nil
                        :unbind-keys nil
                        :stop-timeout nil}
