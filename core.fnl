@@ -52,7 +52,7 @@
 ;; Initialize modals ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(local modal (require :modals3))
+(local modal (require :modal))
 (modal.init config)
 
 

@@ -25,20 +25,20 @@
          :title "Multimedia"
          :items [{:key :s
                   :title "Play or Pause"
-                  :action "multimedia/play-or-pause"}
+                  :action "multimedia:play-or-pause"}
                  {:key :h
                   :title "Prev Track"
-                  :action "multimedia/prev-track"}
+                  :action "multimedia:prev-track"}
                  {:key :l
                   :title "Next Track"
-                  :action "multimedia/next-track"}
+                  :action "multimedia:next-track"}
                  {:key :j
                   :title "Volume Down"
-                  :action "multimedia/volume-down"
+                  :action "multimedia:volume-down"
                   :repeatable true}
                  {:key :k
                   :title "Volume Up"
-                  :action "multimedia/volume-up"
+                  :action "multimedia:volume-up"
                   :repeatable true}]}
         {:key :w
          :title "Window"
@@ -46,44 +46,44 @@
                   :title "Layouts"
                   :items [{:key :1
                            :title "Full-screen"
-                           :action "mosaic/full-size"
+                           :action "mosaic:full-size"
                            :repeatable true}
                           {:key :2
                            :title "Left Half"
-                           :action "mosaic/left-half"
+                           :action "mosaic:left-half"
                            :repeatable true}
                           {:key :3
                            :title "Right Half"
-                           :action "mosaic/right-half"
+                           :action "mosaic:right-half"
                            :repeatable true}
                           {:key :4
                            :title "Left Big"
-                           :action "mosaic/left-big"
+                           :action "mosaic:left-big"
                            :repeatable true}
                           {:key :5
                            :title "Right Small"
-                           :action "mosaic/right-small"
+                           :action "mosaic:right-small"
                            :repeatable true}]}]}
         {:key :z
          :title "Zoom"
          :items [{:key :a
                   :title "Mute or Unmute Audio"
-                  :action "zoom/mute-or-unmute-audio"}
+                  :action "zoom:mute-or-unmute-audio"}
                  {:key :v
                   :title "Start or Stop Video"
-                  :action "zoom/start-or-stop-video"}
+                  :action "zoom:start-or-stop-video"}
                  {:key :s
                   :title "Start or Stop Sharing"
-                  :action "zoom/start-or-stop-sharing"}
+                  :action "zoom:start-or-stop-sharing"}
                  {:key :f
                   :title "Pause or Resume Sharing"
-                  :action "zoom/pause-or-resume-sharing"}
+                  :action "zoom:pause-or-resume-sharing"}
                  {:key :i
                   :title "Invite..."
-                  :action "zoom/invite"}
+                  :action "zoom:invite"}
                  {:key :l
                   :title "End Meeting"
-                  :action "zoom/end-meeting"}]}])
+                  :action "zoom:end-meeting"}]}])
 
 (local common-keys
        [{:mods [:cmd]

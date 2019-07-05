@@ -1,3 +1,58 @@
+(local fu hs.fnutils)
+
+;; Simple Utils
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fn find
+  [f tbl]
+  (do
+    (var done? false)
+    (var item nil)
+    (var i 1)
+    (while (and (not done?) (<= i (# tbl)))
+      (let [v (. tbl i)]
+        (when (f v)
+          (set done? true)
+          (set item v)))
+      (set i (+ i 1)))
+    item))
+
+(fn join
+  [sep list]
+  (table.concat list sep))
+
+(fn logf
+  [...]
+  (let [prefixes [...]]
+    (fn [x]
+      (print (table.unpack prefixes) (hs.inspect x)))))
+
+(fn split
+  [search str]
+  (var pieces [])
+  (var input str)
+  (let [len (# search)]
+    (while input
+      (let [i (string.find input search 1 true)]
+        (if i
+            (let [left (string.sub input 1 (- i 1))
+                  right (string.sub input (+ i len))]
+              (set input right)
+              (table.insert pieces left))
+            (do
+              (table.insert pieces input)
+              (set input nil))))))
+  pieces)
+
+(fn tap
+  [f x ...]
+  (f x (table.unpack [...]))
+  x)
+
+
+;; Reduce Primitives
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (fn seq?
   [tbl]
   (~= (. tbl 1) nil))
@@ -15,6 +70,9 @@
     (set result (f result v k)))
   result)
 
+;; Reducers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (fn map
   [f tbl]
   (reduce
@@ -27,7 +85,7 @@
 (fn merge
   [...]
   (let [tbls [...]]
-    (reduce 
+    (reduce
      (fn merger [merged tbl]
        (each [k v (pairs tbl)]
          (tset merged k v))
@@ -44,52 +102,6 @@
    xs)
   []
   tbl))
-
-(fn find
- [f tbl]
- (do
-   (var done? false)
-   (var item nil)
-   (var i 1)
-   (while (and (not done?) (<= i (# tbl)))
-     (let [v (. tbl i)]
-       (when (f v)
-         (set done? true)
-         (set item v)))
-     (set i (+ i 1)))
-   item))
-
-(fn join
-  [sep list]
-  (table.concat list sep))
-
-(fn split
- [search str]
- (var pieces [])
- (var input str)
- (let [len (# search)]
-   (while input
-    (let [i (string.find input search 1 true)]
-     (if i
-       (let [left (string.sub input 1 (- i 1))
-             right (string.sub input (+ i len))]
-         (set input right)
-         (table.insert pieces left))
-       (do
-         (table.insert pieces input)
-         (set input nil))))))
- pieces)
-
-(fn logf
- [...]
- (let [prefixes [...]]
-  (fn [x]
-   (print (table.unpack prefixes) (hs.inspect x)))))
-
-(fn tap
- [f x ...]
- (f x (table.unpack [...]))
- x)
 
 (fn concat
  [...]
