@@ -100,11 +100,19 @@
                   :title "Console"
                   :items [{:key :c
                            :title "Clear"
-                           :action clear-console}]}]}
+                           :action clear-console}]}]
+         :keys [{:mods [:cmd]
+                 :key :y
+                 :action (fn []
+                           (alert "Hi Hammerspoon"))}]}
         {:key "Emacs"
          :items [{:key :h
                   :title "Say hi"
-                  :action say-hi}]}])
+                  :action say-hi}]
+         :keys [{:key :y
+                 :mods [:cmd]
+                 :action (fn []
+                           (alert "Hi Emacs"))}]}])
 
 (local config
         {:title "Main Menu"

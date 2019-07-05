@@ -127,7 +127,7 @@
   (->> (query-bindings :action menu)
        (map (fn [item]
               {:key (. item :key)
-               :fn (create-action-trigger item)}))))
+               :action (create-action-trigger item)}))))
 
 
 (fn bind-menus
@@ -135,7 +135,7 @@
   (->> (query-bindings :items menu)
        (map (fn [{:key key}]
               {:key key
-               :fn (create-menu-trigger key)}))))
+               :action (create-menu-trigger key)}))))
 
 
 (fn menu->bindings
@@ -147,19 +147,52 @@
 
 (fn bind-keys
   [items]
-  (let [bindings (-> items
-                     (menu->bindings))
-        modal (hs.hotkey.modal.new [] nil)]
-    (each [_ {:key key :fn f} (ipairs bindings)]
-      (: modal :bind [] key f))
-    (: modal :bind [] :ESCAPE deactivate-modal)
+  (let [modal (hs.hotkey.modal.new [] nil)]
+    (each [_ item (ipairs items)]
+      (let [{:key key
+             :mods mods
+             :action action} item
+            mods (or mods [])
+            action-fn (action->fn action)]
+        (: modal :bind mods key action-fn)))
     (: modal :enter)
     (fn destroy-bindings
       []
       (when modal
         (: modal :exit)
-        (: modal :delete))
-      nil)))
+        (: modal :delete)))))
+
+(fn bind-menu-keys
+  [items]
+  (bind-keys
+   (concat (menu->bindings items)
+           [{:key :ESCAPE
+             :action deactivate-modal}])))
+
+(fn bind-app-keys
+  [items]
+  (let [modal (hs.hotkey.modal.new [] nil)]
+    (each [_ item (ipairs items)]
+      (let [{:key key
+             :mods mods
+             :action action} item
+            mods (or mods [])
+            action-fn (action->fn action)]
+        (: modal :bind mods key action-fn)))
+    (: modal :enter)
+    (fn destroy-bindings
+      []
+      (when modal
+        (: modal :exit)
+        (: modal :delete)))))
+
+(fn bind-global-keys
+  [items]
+  (each [_ item (ipairs items)]
+    (let [{:key key} item
+          mods (or item.mods [])
+          action-fn (action->fn item.action)]
+      (hs.hotkey.bind mods key action-fn))))
 
 
 ;; Display Modals
@@ -192,28 +225,18 @@
   (modal-alert menu)
   {:menu menu
    :stop-timeout :nil
-   :unbind-keys (bind-keys menu.items)})
+   :unbind-keys (bind-menu-keys menu.items)})
 
 
-;; Apps, Menus, & Config Navigation
+;; Menus, & Config Navigation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(fn find-app
-  [target apps]
-  (find
-   (fn [item]
-     (and (= (. item :name) target)
-          (. item :items)))
-   apps))
 
 
 (fn find-menu
   [target menus]
   (find
    (fn [item]
-     (and (= (. item :key) target)
-          (. item :items)))
+     (= (. item :key) target))
    menus))
 
 
@@ -240,17 +263,23 @@
 (fn idle->enter-app
   [state app-name]
   (let [{:config config
-         :app app} state
+         :app app
+         :unbind-app-keys unbind-app-keys} state
         app-menu (find-menu app-name config.apps)]
     (when app-menu
-      {:app app-name})))
+      (when unbind-app-keys (unbind-app-keys))
+      {:app app-name
+       :unbind-app-keys (bind-app-keys app-menu.keys)})))
 
 
 (fn idle->leave-app
   [state app-name]
-  (let [{:app current-app} state]
+  (let [{:app current-app
+         :unbind-app-keys unbind-app-keys} state]
     (if (= current-app app-name)
-        {:app :nil}
+        (when unbind-app-keys (unbind-app-keys))
+        {:app :nil
+         :unbind-app-keys :nil}
         nil)))
 
 
@@ -293,12 +322,15 @@
   (let [{:config config
          :app app
          :stop-timeout stop-timeout
-         :unbind-keys unbind-keys} state
+         :unbind-keys unbind-keys
+         :unbind-app-keys unbind-app-keys} state
         menu (get-menu config :apps app-name)]
     (if menu
         (do
+          (when unbind-app-keys (unbind-app-keys))
           (merge {:status :active
-                  :app    app-name}
+                  :app    app-name
+                  :unbind-app-keys (bind-app-keys menu.keys)}
                  (show-modal-menu {:stop-timeout stop-timeout
                                    :unbind-keys  unbind-keys
                                    :menu         menu})))
@@ -310,13 +342,17 @@
   (let [{:config       config
          :app          current-app
          :stop-timeout stop-timeout
-         :unbind-keys  unbind-keys} state]
+         :unbind-keys  unbind-keys
+         :unbind-app-keys unbind-app-keys} state]
     (if (= current-app app-name)
-        (merge {:menu :nil
-                :app  :nil}
-               (show-modal-menu {:stop-timeout stop-timeout
-                                 :unbind-keys  unbind-keys
-                                 :menu         config}))
+        (do
+          (when unbind-app-keys (unbind-app-keys))
+          (merge {:menu :nil
+                  :app  :nil
+                  :unbind-app-keys :nil}
+                 (show-modal-menu {:stop-timeout stop-timeout
+                                   :unbind-keys  unbind-keys
+                                   :menu         config})))
         nil)))
 
 
@@ -380,15 +416,19 @@
 
 (fn init
   [config]
-  (let [initial-state {:status :idle
+  (let [active-app (active-app-name)
+        app-menu (find-menu active-app config.apps)
+        initial-state {:status :idle
                        :config config
-                       :app (active-app-name)
+                       :app (when app-menu active-app)
                        :menu nil
                        :unbind-keys nil
+                       :unbind-app-keys nil
                        :stop-timeout nil}
         menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
         app-watcher (hs.application.watcher.new watch-apps)]
     (set fsm (statemachine.new states initial-state :status))
+    (bind-global-keys (or config.keys []))
     (start-logger fsm)
     (: app-watcher :start)
     (fn cleanup []
