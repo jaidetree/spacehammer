@@ -39,12 +39,13 @@ Returns the state-atom.
 "
 (fn update-state
   [state-atom update]
-  (atom.swap!
-    state-atom
-    (fn [state]
-      (-> {}
-          (merge state update)
-          (remove-nils update)))))
+  (when update
+    (atom.swap!
+     state-atom
+     (fn [state]
+       (-> {}
+           (merge state update)
+           (remove-nils update))))))
 
 "
 Dispatch Error
@@ -54,7 +55,7 @@ action while in the current state.
 (fn dispatch-error
   [current-state-key action-name]
   (print (string.format "ERROR: Could not %s from %s state"
-                        current-state-key action-name)))
+                        action-name current-state-key)))
 
 "
 Creates Dispatcher
@@ -72,13 +73,12 @@ another state.
     [action data]
     (let [state (atom.deref state-atom)
           key (. state state-key)
-          update (-?> states
-                      (. key)
-                      (. action)
-                      (transition state data))]
-      (if update
+          action-fn (-?> states
+                         (. key)
+                         (. action))]
+      (if action-fn
           (do
-            (update-state state-atom update)
+            (update-state state-atom (transition action-fn state data))
             true)
           (do
             (dispatch-error key action)

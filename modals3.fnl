@@ -77,7 +77,20 @@
                            :action "zoom/invite"}
                           {:key :l
                            :title "End Meeting"
-                           :action "zoom/end-meeting"}]}]})
+                           :action "zoom/end-meeting"}]}]
+         :apps [{:key "Hammerspoon"
+                 :items [{:key :r
+                          :title "Reload Config"
+                          :action "actions/reload-config"}
+                         {:key :c
+                          :title "Console"
+                          :items [{:key :c
+                                   :title "Clear"
+                                   :action "actions/clear-console"}]}]}
+                {:key "Emacs"
+                 :items [{:key :h
+                          :title "Say hi"
+                          :action "actions/say-hi"}]}]})
 
 (global fsm nil)
 
@@ -127,8 +140,8 @@
   (let [[file fn-name] (split "/" action)]
     (fn []
       (if repeatable
-        (start-modal-timeout)
-        (deactivate-modal))
+          (start-modal-timeout)
+          (deactivate-modal))
       (hs.timer.doAfter 0.01
                         (fn []
                           (let [module (require file)]
@@ -175,7 +188,7 @@
                      (parse-bindings))
         modal (hs.hotkey.modal.new [] nil)]
     (each [_ {:key key :fn f} (ipairs bindings)]
-          (: modal :bind [] key f))
+      (: modal :bind [] key f))
     (: modal :bind [] :ESCAPE deactivate-modal)
     (: modal :enter)
     (fn destroy-bindings
@@ -204,6 +217,14 @@
   []
   (windows.activate-app "Alfred 4"))
 
+(fn find-app
+  [target apps]
+  (find
+   (fn [item]
+     (and (= (. item :name) target)
+          (. item :items)))
+   apps))
+
 (fn find-menu
   [target menus]
   (find
@@ -213,31 +234,36 @@
    menus))
 
 (fn get-menu
-  [config paths]
-  (reduce
-   (fn [{:items items} key]
-     (let [menu (find-menu key items)]
-       menu))
-   config
-   paths))
+  [parent group target]
+  (find-menu target (. parent group)))
 
 (fn idle->active
   [state data]
   (let [{:config config
+         :app app
          :menu menu} state
-        menu (get-menu (or menu config) [])]
+        menu (if app
+                 (get-menu config :apps app)
+                 config)]
     (show-modal-menu menu)
     {:status :active
      :menu menu
      :unbind-keys (bind-keys menu.items)}))
 
 (fn idle->enter-app
-  [state data]
-  {})
+  [state app-name]
+  (let [{:config config
+         :app app} state
+        app-menu (find-menu app-name config.apps)]
+    (when app-menu
+      {:app app-name})))
 
 (fn idle->leave-app
-  [state data]
-  {})
+  [state app-name]
+  (let [{:app current-app} state]
+    (if (= current-app app-name)
+        {:app :nil}
+        nil)))
 
 (fn active->idle
   [state data]
@@ -255,7 +281,7 @@
          :menu menu
          :stop-timeout stop-timeout
          :unbind-keys unbind-keys} state
-        menu (get-menu (or menu config) [menu-key])]
+        menu (get-menu menu :items menu-key)]
     (unbind-keys)
     (show-modal-menu menu)
     (when stop-timeout
@@ -281,14 +307,31 @@
 
 
 (local states
-       {:idle   {:activate   idle->active
-                 :enter-app idle->enter-app
-                 :leave-app idle->leave-app}
-        :active {:deactivate active->idle
-                 :activate   active->active
-                 :enter-app  active->enter-app
-                 :leave-app  active->leave-app
+       {:idle   {:activate      idle->active
+                 :enter-app     idle->enter-app
+                 :leave-app     idle->leave-app}
+        :active {:deactivate    active->idle
+                 :activate      active->active
+                 :enter-app     active->enter-app
+                 :leave-app     active->leave-app
                  :start-timeout active->timeout}})
+
+(local app-events
+       {hs.application.watcher.activated   :activated
+        hs.application.watcher.deactivated :deactivated
+        hs.application.watcher.hidden      :hidden
+        hs.application.watcher.launched    :launched
+        hs.application.watcher.launching   :launching
+        hs.application.watcher.terminated  :terminated
+        hs.application.watcher.unhidden    :unhidden})
+
+(fn watch-apps
+  [app-name event app]
+  (let [event-type (. app-events event)]
+    (if (= event-type :activated)
+        (fsm.dispatch :enter-app app-name)
+        (= event-type :deactivated)
+        (fsm.dispatch :leave-app app-name))))
 
 (fn start-logger
   [fsm]
@@ -296,8 +339,8 @@
    fsm.state :log-state
    (fn log-state
      [state]
-     (print "state is now: " state.status))))
-                                        ;(print "menu: " (hs.inspect state.menu)))))
+     (print "state is now: " state.status)
+     (print "app is now: " state.app))))
 
 (fn init
   [config]
@@ -307,10 +350,15 @@
                        :app nil
                        :menu nil
                        :unbind-keys nil
-                       :stop-timeout nil}]
+                       :stop-timeout nil}
+        menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
+        app-watcher (hs.application.watcher.new watch-apps)]
     (global fsm (statemachine.new states initial-state :status))
-    (hs.hotkey.bind [:cmd] :space activate-modal)
-    (start-logger fsm)))
+    (start-logger fsm)
+    (: app-watcher :start)
+    (fn cleanup []
+      (: menu-hotkey :delete)
+      (: app-watcher :stop))))
 
 
 {:init            init

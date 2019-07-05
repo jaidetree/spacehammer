@@ -1,3 +1,4 @@
+(require-macros :macros)
 (hs.console.clearConsole)
 (hs.ipc.cliInstall) ; ensure CLI installed
 
@@ -74,17 +75,16 @@
 ;   (: state-machine :toMain))
 
 
-(require :keybindings)
+; (require :keybindings)
 
 ;; toggle hs.console with Ctrl+Cmd+~
 (hs.hotkey.bind
  [:ctrl :cmd] "`" nil
  (fn []
-   (let [console (hs.console.hswindow)]
-     (when console
-       (if (= console (hs.window.focusedWindow))
-           (-> console (: :application) (: :hide))
-           (-> console (: :raise) (: :focus)))))))
+   (when-let [console (hs.console.hswindow)]
+     (if (= console (hs.window.focusedWindow))
+         (-> console (: :application) (: :hide))
+         (-> console (: :raise) (: :focus))))))
 
 ;; disable annoying Cmd+M for minimizing windows
 ;; (hs.hotkey.bind [:cmd] :m nil (fn [] nil))
