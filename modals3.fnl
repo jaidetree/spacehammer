@@ -199,9 +199,8 @@
         (: modal :delete))
       nil)))
 
-(fn show-modal-menu
+(fn show-modal-alert
   [menu]
-  (print "show-menu-modal" (hs.inspect menu))
   (let [items (->> (. menu :items)
                    (map (fn [item]
                           [(. item :key) (. item :title)]))
@@ -215,9 +214,24 @@
            99999)))
 
 
+(fn show-modal-menu
+  [{:menu menu
+    :unbind-keys unbind-keys
+    :stop-timeout stop-timeout}]
+  (when unbind-keys
+    (unbind-keys))
+  (when stop-timeout
+    (stop-timeout))
+  (show-modal-alert menu)
+  {:menu menu
+   :stop-timeout :nil
+   :unbind-keys (bind-keys menu.items)})
+
+
 (fn activate-alfred
   []
   (windows.activate-app "Alfred 4"))
+
 
 (fn find-app
   [target apps]
@@ -227,6 +241,7 @@
           (. item :items)))
    apps))
 
+
 (fn find-menu
   [target menus]
   (find
@@ -235,9 +250,11 @@
           (. item :items)))
    menus))
 
+
 (fn get-menu
   [parent group target]
   (find-menu target (. parent group)))
+
 
 (fn idle->active
   [state data]
@@ -246,10 +263,9 @@
         menu (if app
                  (get-menu config :apps app)
                  config)]
-    (show-modal-menu menu)
-    {:status :active
-     :menu menu
-     :unbind-keys (bind-keys menu.items)}))
+    (merge {:status :active}
+           (show-modal-menu {:menu menu}))))
+
 
 (fn idle->enter-app
   [state app-name]
@@ -259,12 +275,14 @@
     (when app-menu
       {:app app-name})))
 
+
 (fn idle->leave-app
   [state app-name]
   (let [{:app current-app} state]
     (if (= current-app app-name)
         {:app :nil}
         nil)))
+
 
 (fn active->idle
   [state data]
@@ -276,6 +294,7 @@
    :stop-timeout :nil
    :unbind-keys (state.unbind-keys)})
 
+
 (fn active->active
   [state menu-key]
   (let [{:config config
@@ -285,21 +304,19 @@
         menu (if menu-key
                  (get-menu menu :items menu-key)
                  config)]
-    (unbind-keys)
-    (show-modal-menu menu)
-    (when stop-timeout
-      (stop-timeout))
     (merge state
-           {:status :active
-            :stop-timeout :nil
-            :menu menu
-            :unbind-keys (bind-keys menu.items)})))
+           {:status :active}
+           (show-modal-menu {:stop-timeout stop-timeout
+                             :unbind-keys  unbind-keys
+                             :menu         menu}))))
+
 
 (fn active->timeout
   [state]
   (when state.stop-timeout
     (state.stop-timeout))
   {:stop-timeout (timeout deactivate-modal)})
+
 
 (fn active->enter-app
   [state app-name]
@@ -310,26 +327,26 @@
         menu (get-menu config :apps app-name)]
     (if menu
         (do
-          (unbind-keys)
-          (show-modal-menu menu)
-          (when stop-timeout
-            (stop-timeout))
-          {:status :active
-           :app app-name
-           :stop-timeout :nil
-           :menu menu
-           :unbind-keys (bind-keys menu.items)})
+          (merge {:status :active
+                  :app    app-name}
+                 (show-modal-menu {:stop-timeout stop-timeout
+                                   :unbind-keys  unbind-keys
+                                   :menu         menu})))
         nil)))
+
 
 (fn active->leave-app
   [state app-name]
-  (let [{:app current-app
-         :unbind-keys unbind-keys} state]
+  (let [{:config       config
+         :app          current-app
+         :stop-timeout stop-timeout
+         :unbind-keys  unbind-keys} state]
     (if (= current-app app-name)
-        (do
-          (tset state :menu nil)
-          (tset state :app nil)
-          (active->active state nil))
+        (merge {:menu :nil
+                :app  :nil}
+               (show-modal-menu {:stop-timeout stop-timeout
+                                 :unbind-keys  unbind-keys
+                                 :menu         config}))
         nil)))
 
 
@@ -342,6 +359,7 @@
                  :enter-app     active->enter-app
                  :leave-app     active->leave-app
                  :start-timeout active->timeout}})
+
 
 (local app-events
        {hs.application.watcher.activated   :activated
