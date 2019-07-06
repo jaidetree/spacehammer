@@ -101,6 +101,10 @@
                   (print "Entering Hammerspoon :D"))
          :exit (fn []
                  (print "Exiting Hammerspoon T_T"))
+         :activate (fn []
+                     (print "Activating Hammerspoon"))
+         :deactivate (fn []
+                     (print "Deactivating Hammerspoon"))
          :items [{:key :r
                   :title "Reload Config"
                   :action reload-config}
@@ -114,6 +118,10 @@
                  :action (fn []
                            (alert "Hi Hammerspoon"))}]}
         {:key "Emacs"
+         :activate (fn []
+                     (print "Activating Emacs"))
+         :deactivate (fn []
+                       (print "Deactivating Emacs"))
          :items [{:key :h
                   :title "Say hi"
                   :action say-hi}]
@@ -123,8 +131,7 @@
                            (alert "Hi Emacs"))}]}])
 
 (local config
-        {:title "Main Menu"
-         :items menu-items
+        {:items menu-items
          :keys common-keys
          :apps apps})
 

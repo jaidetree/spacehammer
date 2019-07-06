@@ -72,6 +72,14 @@
   []
   (fsm.dispatch :start-timeout))
 
+(fn enter-app
+  [app-name]
+  (fsm.dispatch :enter-app app-name))
+
+(fn leave-app
+  [app-name]
+  (fsm.dispatch :leave-app app-name))
+
 
 ;; Menu & Action Trigger Handlers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -195,6 +203,34 @@
       (hs.hotkey.bind mods key action-fn))))
 
 
+;; Apps & Menu Lifecyles
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fn activate-app
+  [menu]
+  (when (and menu menu.activate)
+    (: menu :activate)))
+
+(fn deactivate-app
+  [menu]
+  (when (and menu menu.deactivate)
+    (: menu :deactivate)))
+
+(fn enter-menu
+  [menu]
+  (when (and menu menu.enter)
+    (: menu :enter)))
+
+(fn exit-menu
+  [menu]
+  (when (and menu menu.exit)
+    (: menu :exit)))
+
+(fn call-when
+  [f]
+  (when f (f)))
+
+
 ;; Display Modals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -219,14 +255,10 @@
     :prev-menu prev-menu
     :unbind-keys unbind-keys
     :stop-timeout stop-timeout}]
-  (when unbind-keys
-    (unbind-keys))
-  (when stop-timeout
-    (stop-timeout))
-  (when (and prev-menu prev-menu.exit)
-    (: prev-menu :exit))
-  (when menu.enter
-    (: menu :enter))
+  (call-when unbind-keys)
+  (call-when stop-timeout)
+  (exit-menu prev-menu)
+  (enter-menu menu)
   (modal-alert menu)
   {:menu menu
    :stop-timeout :nil
@@ -259,7 +291,7 @@
   (let [{:config config
          :app app} state
         menu (if app
-                 (get-menu config :apps app)
+                 (find-menu app config.apps)
                  config)]
     (merge {:status :active}
            (show-modal-menu {:menu menu}))))
@@ -270,19 +302,25 @@
   (let [{:config config
          :app app
          :unbind-app-keys unbind-app-keys} state
+        prev-app (find-menu app config.apps)
         app-menu (find-menu app-name config.apps)]
     (when app-menu
-      (when unbind-app-keys (unbind-app-keys))
+      (call-when unbind-app-keys)
+      (deactivate-app prev-app)
+      (activate-app app-menu)
       {:app app-name
        :unbind-app-keys (bind-app-keys app-menu.keys)})))
 
 
 (fn idle->leave-app
   [state app-name]
-  (let [{:app current-app
-         :unbind-app-keys unbind-app-keys} state]
+  (let [{:config config
+         :app current-app
+         :unbind-app-keys unbind-app-keys} state
+        prev-app (find-menu current-app config.apps)]
     (if (= current-app app-name)
-        (do (when unbind-app-keys (unbind-app-keys))
+        (do (call-when unbind-app-keys)
+            (deactivate-app prev-app)
             {:app :nil
              :unbind-app-keys :nil})
         nil)))
@@ -292,10 +330,8 @@
   [state data]
   (let [{:menu prev-menu} state]
     (hs.alert.closeAll)
-    (when state.stop-timeout
-      (state.stop-timeout))
-    (when (and prev-menu prev-menu.exit)
-      (: prev-menu :exit))
+    (call-when state.stop-timeout)
+    (exit-menu prev-menu)
     {:status :idle
      :menu :nil
      :stop-timeout :nil
@@ -309,10 +345,9 @@
          :stop-timeout stop-timeout
          :unbind-keys unbind-keys} state
         menu (if menu-key
-                 (get-menu prev-menu :items menu-key)
+                 (find-menu menu-key prev-menu.items)
                  config)]
-    (merge state
-           {:status :active}
+    (merge {:status :active}
            (show-modal-menu {:stop-timeout stop-timeout
                              :unbind-keys  unbind-keys
                              :prev-menu    prev-menu
@@ -321,30 +356,32 @@
 
 (fn active->timeout
   [state]
-  (when state.stop-timeout
-    (state.stop-timeout))
+  (call-when state.stop-timeout)
   {:stop-timeout (timeout deactivate-modal)})
 
 
 (fn active->enter-app
   [state app-name]
   (let [{:config config
-         :app app
+         :app prev-app
          :stop-timeout stop-timeout
          :menu prev-menu
          :unbind-keys unbind-keys
          :unbind-app-keys unbind-app-keys} state
-        menu (get-menu config :apps app-name)]
-    (if menu
+        app-menu (find-menu app-name config.apps)
+        prev-app-menu (find-menu prev-app config.apps)]
+    (if app-menu
         (do
-          (when unbind-app-keys (unbind-app-keys))
+          (call-when unbind-app-keys)
+          (deactivate-app prev-app-menu)
+          (activate-app app-menu)
           (merge {:status :active
                   :app    app-name
-                  :unbind-app-keys (bind-app-keys menu.keys)}
+                  :unbind-app-keys (bind-app-keys app-menu.keys)}
                  (show-modal-menu {:stop-timeout stop-timeout
                                    :unbind-keys  unbind-keys
                                    :prev-menu    prev-menu
-                                   :menu         menu})))
+                                   :menu         app-menu})))
         nil)))
 
 
@@ -354,10 +391,12 @@
          :app          current-app
          :stop-timeout stop-timeout
          :unbind-keys  unbind-keys
-         :unbind-app-keys unbind-app-keys} state]
+         :unbind-app-keys unbind-app-keys} state
+        prev-app-menu (find-menu current-app config.apps)]
     (if (= current-app app-name)
         (do
-          (when unbind-app-keys (unbind-app-keys))
+          (call-when unbind-app-keys)
+          (deactivate-app prev-app-menu)
           (merge {:menu :nil
                   :app  :nil
                   :unbind-app-keys :nil}
@@ -399,9 +438,9 @@
   [app-name event app]
   (let [event-type (. app-events event)]
     (if (= event-type :activated)
-        (fsm.dispatch :enter-app app-name)
+        (enter-app app-name)
         (= event-type :deactivated)
-        (fsm.dispatch :leave-app app-name))))
+        (leave-app app-name))))
 
 
 (fn start-logger
