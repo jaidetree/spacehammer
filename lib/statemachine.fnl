@@ -1,5 +1,4 @@
 (local atom (require :lib.atom))
-(local hyper (require :hyper))
 (local {:filter filter
          :map map
          :merge merge} (require :lib.functional))

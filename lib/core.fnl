@@ -2,9 +2,9 @@
 (hs.console.clearConsole)
 (hs.ipc.cliInstall) ; ensure CLI installed
 
-;;;;;;;;;;;;;;
-;; defaults ;;
-;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; defaults
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (set hs.hints.style :vimperator)
 (set hs.hints.showTitleThresh 4)
@@ -16,9 +16,18 @@
 (global log (fn [s] (print (hs.inspect s) 5)))
 (global fw hs.window.focusedWindow)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;  auto reload config   ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(fn file-exists?
+  [filepath]
+  (let [file (io.open filepath "r")]
+    (when file
+      (io.close file))
+    (~= file nil)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; auto reload config
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (global
  config-file-pathwatcher
  (hs.pathwatcher.new
@@ -36,33 +45,10 @@
 
 (: config-file-pathwatcher :start)
 
-;;;;;;;;;;;;;;;;;;
-;; Load modules ;;
-;;;;;;;;;;;;;;;;;;
 
-(local modules [:mosaic
-                :zoom])
-
-(each [_ module (ipairs modules)]
-  (require module))
-
-;;;;;;;;;;;;;;;;;;;;;;;
-;; Initialize modals ;;
-;;;;;;;;;;;;;;;;;;;;;;;
-(fn file-exists?
-  [filepath]
-  (let [file (io.open filepath "r")]
-    (when file
-      (io.close file))
-    (~= file nil)))
-
-(local private-config-path (.. hs.configdir "/private/config.fnl"))
-(local config (if (file-exists? private-config-path)
-                  (require :private.config)
-                  (require :config)))
-
-(local modal (require :lib.modal))
-(modal.init config)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Set utility keybindings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;; toggle hs.console with Ctrl+Cmd+~
@@ -76,3 +62,23 @@
 
 ;; disable annoying Cmd+M for minimizing windows
 ;; (hs.hotkey.bind [:cmd] :m nil (fn [] nil))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Load private init.fnl file (if it exists)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(when (file-exists? (.. hs.configdir "/private/init.fnl"))
+  (require :private))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Initialize modals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(local config (if (file-exists? (.. hs.configdir "/private/config.fnl"))
+                  (require :private.config)
+                  (require :config)))
+
+(local modal (require :lib.modal))
+(modal.init config)
