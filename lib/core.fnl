@@ -26,7 +26,7 @@
   (fn [files]
     (let [u hs.fnutils
           fnl-file-change? (u.some
-                            files,
+                            files
                             (fn [p]
                               (when (not (string.match p ".#")) ;; ignore emacs temp files
                                 (let [ext (u.split p "%p")]
@@ -35,8 +35,6 @@
       (when fnl-file-change? (hs.reload))))))
 
 (: config-file-pathwatcher :start)
-
-(local config (require :config))
 
 ;;;;;;;;;;;;;;;;;;
 ;; Load modules ;;
@@ -51,6 +49,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialize modals ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
+(fn file-exists?
+  [filepath]
+  (let [file (io.open filepath "r")]
+    (when file
+      (io.close file))
+    (~= file nil)))
+
+(local private-config-path (.. hs.configdir "/private/config.fnl"))
+(local config (if (file-exists? private-config-path)
+                  (require :private.config)
+                  (require :config)))
 
 (local modal (require :lib.modal))
 (modal.init config)

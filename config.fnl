@@ -1,5 +1,11 @@
 (local windows (require :lib.windows))
 
+;; Default Config
+;; - It is not recommended to edit this file.
+;; - Changes may conflict with upstream updates.
+;; - Edit ~/.hammerspoon/private folder instead.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (fn reload-config
   []
   (hs.reload))
