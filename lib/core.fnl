@@ -1,4 +1,4 @@
-(require-macros :macros)
+(require-macros :lib.macros)
 (hs.console.clearConsole)
 (hs.ipc.cliInstall) ; ensure CLI installed
 
@@ -52,7 +52,7 @@
 ;; Initialize modals ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(local modal (require :modal))
+(local modal (require :lib.modal))
 (modal.init config)
 
 

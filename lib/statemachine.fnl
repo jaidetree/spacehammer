@@ -1,8 +1,8 @@
-(local atom (require :atom))
+(local atom (require :lib.atom))
 (local hyper (require :hyper))
 (local {:filter filter
          :map map
-         :merge merge} (require :functional))
+         :merge merge} (require :lib.functional))
 
 "
 Transition

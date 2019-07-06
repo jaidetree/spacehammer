@@ -1,4 +1,4 @@
-(require-macros :macros)
+(require-macros :lib.macros)
 (local hyper (require :hyper))
 (local log (hs.logger.new 'zoom.fnl' 'debug'))
 

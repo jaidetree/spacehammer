@@ -1,4 +1,4 @@
-(local windows (require :windows))
+(local windows (require :lib.windows))
 
 (fn reload-config
   []

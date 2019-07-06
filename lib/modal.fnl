@@ -1,6 +1,6 @@
-(local atom (require :atom))
-(local statemachine (require :statemachine))
-(local windows (require :windows))
+(local atom (require :lib.atom))
+(local statemachine (require :lib.statemachine))
+(local windows (require :lib.windows))
 (local {:concat concat
         :filter filter
         :find find
@@ -9,40 +9,25 @@
         :merge merge
         :reduce reduce
         :split split
-        :tap tap} (require :functional))
-
+        :tap tap}
+       (require :lib.functional))
+(local {:align-columns align-columns}
+       (require :lib.text))
+(local {:action->fn action->fn
+        :bind-keys bind-keys}
+       (require :lib.bindings))
+(local lifecycle (require :lib.lifecycle))
 
 (var fsm nil)
 
-;; Menu Column Alignment
+
+;; General Utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(fn call-when
+  [f]
+  (when f (f)))
 
-(fn max-length
-  [items]
-  (reduce
-   (fn [max [key _]]  (math.max max (# key)))
-   0
-   items))
-
-
-(fn pad-str
-  [char max str]
-  (let [diff (- max (# str))]
-    (.. str (string.rep char diff))))
-
-
-(fn align-columns
-  [items]
-  (let [max (max-length items)]
-    (map
-     (fn [[key action]]
-       (.. (pad-str " " max key) " - " action))
-     items)))
-
-
-;; Timers & Delays
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (fn timeout
   [f]
@@ -81,27 +66,8 @@
   (fsm.dispatch :leave-app app-name))
 
 
-;; Menu & Action Trigger Handlers
+;; Set Key Bindings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(fn create-action-fn
-  [action]
-  (let [[file fn-name] (split ":" action)]
-    (fn []
-      (let [module (require file)]
-        (: module fn-name)))))
-
-(fn action->fn
-  [action]
-  (match (type action)
-    :function action
-    :string (create-action-fn action)
-    _         (do
-                (print (string.format
-                        "ERROR: Could not create action handler for %s"
-                        (hs.inspect action)))
-                (fn [] true))))
 
 
 (fn create-action-trigger
@@ -111,88 +77,47 @@
       (if repeatable
           (start-modal-timeout)
           (deactivate-modal))
+      ;; Delay the action-fn ever so slightly
+      ;; to speed up the closing of the menu
+      ;; This makes the UI feel slightly snappier
       (hs.timer.doAfter 0.01 action-fn))))
 
 
 (fn create-menu-trigger
-  [key]
+  [{:key key}]
   (fn []
-    (fsm.dispatch :activate key)))
+    (activate-modal key)))
 
 
-;; Key Bindings
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(fn select-trigger
+  [item]
+  (if item.action
+      (create-action-trigger item)
+      item.items
+      (create-menu-trigger item)
+      (fn []
+        (print "No trigger could be found for item: "
+               (hs.inspect item)))))
 
 
-(fn query-bindings
-  [type-key items]
-  (->> items
-       (filter (fn [item] (. item type-key)))))
+(fn bind-item
+  [item]
+  {:key item.key
+   :action (select-trigger item)})
 
-
-(fn bind-actions
-  [menu]
-  (->> (query-bindings :action menu)
-       (map (fn [item]
-              {:key (. item :key)
-               :action (create-action-trigger item)}))))
-
-
-(fn bind-menus
-  [menu]
-  (->> (query-bindings :items menu)
-       (map (fn [{:key key}]
-              {:key key
-               :action (create-menu-trigger key)}))))
-
-
-(fn menu->bindings
-  [items]
-  (let [action-bindings (bind-actions items)
-        menu-bindings (bind-menus items)]
-    (concat [] action-bindings menu-bindings)))
-
-
-(fn bind-keys
-  [items]
-  (let [modal (hs.hotkey.modal.new [] nil)]
-    (each [_ item (ipairs items)]
-      (let [{:key key
-             :mods mods
-             :action action} item
-            mods (or mods [])
-            action-fn (action->fn action)]
-        (: modal :bind mods key action-fn)))
-    (: modal :enter)
-    (fn destroy-bindings
-      []
-      (when modal
-        (: modal :exit)
-        (: modal :delete)))))
 
 (fn bind-menu-keys
   [items]
-  (bind-keys
-   (concat (menu->bindings items)
-           [{:key :ESCAPE
-             :action deactivate-modal}])))
+  (-> (map bind-item items)
+      (concat [{:key :ESCAPE
+                :action deactivate-modal}])
+      (bind-keys)))
+
 
 (fn bind-app-keys
   [items]
-  (let [modal (hs.hotkey.modal.new [] nil)]
-    (each [_ item (ipairs items)]
-      (let [{:key key
-             :mods mods
-             :action action} item
-            mods (or mods [])
-            action-fn (action->fn action)]
-        (: modal :bind mods key action-fn)))
-    (: modal :enter)
-    (fn destroy-bindings
-      []
-      (when modal
-        (: modal :exit)
-        (: modal :delete)))))
+  (bind-keys items))
+
 
 (fn bind-global-keys
   [items]
@@ -201,34 +126,6 @@
           mods (or item.mods [])
           action-fn (action->fn item.action)]
       (hs.hotkey.bind mods key action-fn))))
-
-
-;; Apps & Menu Lifecyles
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(fn activate-app
-  [menu]
-  (when (and menu menu.activate)
-    (: menu :activate)))
-
-(fn deactivate-app
-  [menu]
-  (when (and menu menu.deactivate)
-    (: menu :deactivate)))
-
-(fn enter-menu
-  [menu]
-  (when (and menu menu.enter)
-    (: menu :enter)))
-
-(fn exit-menu
-  [menu]
-  (when (and menu menu.exit)
-    (: menu :exit)))
-
-(fn call-when
-  [f]
-  (when f (f)))
 
 
 ;; Display Modals
@@ -257,8 +154,8 @@
     :stop-timeout stop-timeout}]
   (call-when unbind-keys)
   (call-when stop-timeout)
-  (exit-menu prev-menu)
-  (enter-menu menu)
+  (lifecycle.exit-menu prev-menu)
+  (lifecycle.enter-menu menu)
   (modal-alert menu)
   {:menu menu
    :stop-timeout :nil
@@ -306,8 +203,8 @@
         app-menu (find-menu app-name config.apps)]
     (when app-menu
       (call-when unbind-app-keys)
-      (deactivate-app prev-app)
-      (activate-app app-menu)
+      (lifecycle.deactivate-app prev-app)
+      (lifecycle.activate-app app-menu)
       {:app app-name
        :unbind-app-keys (bind-app-keys app-menu.keys)})))
 
@@ -320,7 +217,7 @@
         prev-app (find-menu current-app config.apps)]
     (if (= current-app app-name)
         (do (call-when unbind-app-keys)
-            (deactivate-app prev-app)
+            (lifecycle.deactivate-app prev-app)
             {:app :nil
              :unbind-app-keys :nil})
         nil)))
@@ -331,7 +228,7 @@
   (let [{:menu prev-menu} state]
     (hs.alert.closeAll)
     (call-when state.stop-timeout)
-    (exit-menu prev-menu)
+    (lifecycle.exit-menu prev-menu)
     {:status :idle
      :menu :nil
      :stop-timeout :nil
@@ -373,8 +270,8 @@
     (if app-menu
         (do
           (call-when unbind-app-keys)
-          (deactivate-app prev-app-menu)
-          (activate-app app-menu)
+          (lifecycle.deactivate-app prev-app-menu)
+          (lifecycle.activate-app app-menu)
           (merge {:status :active
                   :app    app-name
                   :unbind-app-keys (bind-app-keys app-menu.keys)}
@@ -396,7 +293,7 @@
     (if (= current-app app-name)
         (do
           (call-when unbind-app-keys)
-          (deactivate-app prev-app-menu)
+          (lifecycle.deactivate-app prev-app-menu)
           (merge {:menu :nil
                   :app  :nil
                   :unbind-app-keys :nil}
@@ -479,6 +376,7 @@
         app-watcher (hs.application.watcher.new watch-apps)]
     (set fsm (statemachine.new states initial-state :status))
     (bind-global-keys (or config.keys []))
+    (lifecycle.activate-app app-menu)
     (start-logger fsm)
     (: app-watcher :start)
     (fn cleanup []
