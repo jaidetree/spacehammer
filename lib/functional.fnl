@@ -11,6 +11,10 @@
   [sep list]
   (table.concat list sep))
 
+(fn last
+  [list]
+  (. list (# list)))
+
 (fn logf
   [...]
   (let [prefixes [...]]
@@ -23,6 +27,27 @@
       (. prop-name tbl)
       (fn [tbl]
         (. tbl prop-name))))
+
+(fn slice-start-end
+  [start end list]
+  (let [end (if (< end 0)
+                (+ (# list) end)
+                end)]
+    (var sliced [])
+    (for [i start end]
+      (table.insert sliced (. list i)))
+    sliced))
+
+(fn slice-start
+  [start list]
+  (slice-start-end start (# list) list))
+
+(fn slice
+  [start end list]
+  (if (and (= (type end) :table)
+           (not list))
+      (slice-start start end)
+      (slice-start-end start end list)))
 
 (fn split
   [search str]
@@ -107,11 +132,13 @@
  :get    get
  :find   find
  :join   join
+ :last   last
  :logf   logf
  :map    map
  :merge  merge
  :reduce reduce
  :seq    seq
  :seq?   seq?
+ :slice  slice
  :split  split
  :tap    tap}

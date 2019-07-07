@@ -7,7 +7,13 @@
   (let [[file fn-name] (split ":" action)]
     (fn []
       (let [module (require file)]
-        (: module fn-name)))))
+        (if (. module fn-name)
+            (: module fn-name)
+            (do
+              (print (string.format
+                      "ERROR: Could not invoke action %s"
+                      action))))))))
+
 
 (fn action->fn
   [action]

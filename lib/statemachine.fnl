@@ -1,7 +1,9 @@
 (local atom (require :lib.atom))
 (local {:filter filter
-         :map map
-         :merge merge} (require :lib.functional))
+        :logf logf
+        :map map
+        :merge merge
+        :tap tap} (require :lib.functional))
 
 "
 Transition
@@ -44,7 +46,7 @@ Returns the state-atom.
      (fn [state]
        (-> {}
            (merge state update)
-           (remove-nils update))))))
+           )))))
 
 "
 Dispatch Error

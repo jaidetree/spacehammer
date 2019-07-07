@@ -1,13 +1,14 @@
 (local atom (require :lib.atom))
 (local statemachine (require :lib.statemachine))
-(local windows (require :lib.windows))
 (local {:concat concat
         :find   find
         :filter filter
         :get    get
         :join   join
+        :last   last
         :map    map
         :merge  merge
+        :slice  slice
         :tap    tap}
        (require :lib.functional))
 (local {:align-columns align-columns}
@@ -25,7 +26,8 @@
 
 (fn call-when
   [f]
-  (when f (f)))
+  (when (and f (= (type f) :function))
+    (f)))
 
 
 (fn timeout
@@ -52,6 +54,11 @@
   (fsm.dispatch :deactivate))
 
 
+(fn previous-modal
+  []
+  (fsm.dispatch :previous))
+
+
 (fn start-modal-timeout
   []
   (fsm.dispatch :start-timeout))
@@ -68,13 +75,13 @@
 ;; Set Key Bindings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (fn create-action-trigger
-  [{:action action :repeatable repeatable}]
+  [{:action action :repeatable repeatable :timeout timeout}]
   (let [action-fn (action->fn action)]
     (fn []
-      (if repeatable
+      (if (and repeatable (~= timeout false))
           (start-modal-timeout)
+          (not repeatable)
           (deactivate-modal))
       ;; Delay the action-fn ever so slightly
       ;; to speed up the closing of the menu
@@ -90,7 +97,9 @@
 
 (fn select-trigger
   [item]
-  (if item.action
+  (if (and item.action (= item.action :previous))
+      previous-modal
+      item.action
       (create-action-trigger item)
       item.items
       (create-menu-trigger item)
@@ -134,6 +143,7 @@
 
 ;; Display Modals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (local mod-chars {:cmd "⌘"
                   :alt "⌥"
                   :shift "⇧"
@@ -169,7 +179,8 @@
   [{:menu menu
     :prev-menu prev-menu
     :unbind-keys unbind-keys
-    :stop-timeout stop-timeout}]
+    :stop-timeout stop-timeout
+    :history history}]
   (call-when unbind-keys)
   (call-when stop-timeout)
   (lifecycle.exit-menu prev-menu)
@@ -177,7 +188,10 @@
   (modal-alert menu)
   {:menu menu
    :stop-timeout :nil
-   :unbind-keys (bind-menu-keys menu.items)})
+   :unbind-keys (bind-menu-keys menu.items)
+   :history (if history
+                (concat [] history [menu])
+                [])})
 
 
 ;; Menus, & Config Navigation
@@ -200,14 +214,18 @@
 (fn idle->active
   [state data]
   (let [{:config config
-         :app app} state
+         :app app
+         :stop-timeout stop-timeout
+         :unbind-keys unbind-keys} state
         app-menu (when app
                    (find-menu app config.apps))
         menu (if (and app-menu (> (# app-menu.items) 0))
                  (find-menu app config.apps)
                  config)]
     (merge {:status :active}
-           (show-modal-menu {:menu menu}))))
+           (show-modal-menu {:menu menu
+                             :stop-timeout stop-timeout
+                             :unbind-keys unbind-keys}))))
 
 
 (fn idle->enter-app
@@ -248,23 +266,26 @@
     {:status :idle
      :menu :nil
      :stop-timeout :nil
+     :history []
      :unbind-keys (state.unbind-keys)}))
 
 
-(fn active->active
+(fn active->submenu
   [state menu-key]
   (let [{:config config
          :menu prev-menu
          :stop-timeout stop-timeout
-         :unbind-keys unbind-keys} state
+         :unbind-keys unbind-keys
+         :history history} state
         menu (if menu-key
                  (find-menu menu-key prev-menu.items)
                  config)]
-    (merge {:status :active}
+    (merge {:status :submenu}
            (show-modal-menu {:stop-timeout stop-timeout
                              :unbind-keys  unbind-keys
                              :prev-menu    prev-menu
-                             :menu         menu}))))
+                             :menu         menu
+                             :history      history}))))
 
 
 (fn active->timeout
@@ -285,6 +306,8 @@
         prev-app-menu (find-menu prev-app config.apps)]
     (if app-menu
         (do
+          (print (.. "Entered " app-name " while in root menu?")
+                 (= prev-menu config))
           (call-when unbind-app-keys)
           (lifecycle.deactivate-app prev-app-menu)
           (lifecycle.activate-app app-menu)
@@ -294,7 +317,8 @@
                  (show-modal-menu {:stop-timeout stop-timeout
                                    :unbind-keys  unbind-keys
                                    :prev-menu    prev-menu
-                                   :menu         app-menu})))
+                                   :menu         app-menu
+                                   :history      history})))
         nil)))
 
 
@@ -318,20 +342,45 @@
                                    :menu         config})))
         nil)))
 
+(fn list-history
+  [history]
+  (print
+   "History: "
+   (hs.inspect (map (get :title) history))))
+
+(fn submenu->previous
+  [state]
+  (let [{:config config
+         :history history} state
+        history (slice 1 -1 history)
+        main-menu (= 0 (# history))
+        navigate (if main-menu
+                     idle->active
+                     active->submenu)]
+    (print "Returning to main menu? " main-menu)
+    (navigate (merge state
+                     {:history history}))))
+
 
 ;; Finite State Machine States
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (local states
-       {:idle   {:activate      idle->active
-                 :enter-app     idle->enter-app
-                 :leave-app     idle->leave-app}
-        :active {:deactivate    active->idle
-                 :activate      active->active
-                 :enter-app     active->enter-app
-                 :leave-app     active->leave-app
-                 :start-timeout active->timeout}})
+       {:idle   {:activate       idle->active
+                 :enter-app      idle->enter-app
+                 :leave-app      idle->leave-app}
+        :active {:deactivate     active->idle
+                 :activate       active->submenu
+                 :enter-app      active->enter-app
+                 :leave-app      active->leave-app
+                 :start-timeout  active->timeout}
+        :submenu {:deactivate    active->idle
+                  :activate      active->submenu
+                  :previous      submenu->previous
+                  :enter-app     idle->enter-app
+                  :leave-app     idle->leave-app
+                  :start-timeout active->timeout}})
 
 
 ;; Watchers, Dispatchers, & Logging
@@ -363,7 +412,8 @@
    (fn log-state
      [state]
      (print "state is now: " state.status)
-     (print "app is now: " state.app))))
+     (print "app is now: " state.app)
+     (list-history state.history))))
 
 
 (fn active-app-name
@@ -380,13 +430,14 @@
 (fn init
   [config]
   (let [active-app (active-app-name)
-        initial-state {:status :idle
-                       :config config
+        initial-state {:config config
                        :app nil
+                       :history []
                        :menu nil
+                       :status :idle
+                       :stop-timeout nil
                        :unbind-keys nil
-                       :unbind-app-keys nil
-                       :stop-timeout nil}
+                       :unbind-app-keys nil}
         menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
         app-watcher (hs.application.watcher.new watch-apps)]
     (set fsm (statemachine.new states initial-state :status))
@@ -399,4 +450,5 @@
       (: app-watcher :stop))))
 
 
-{:init init}
+{:init init
+ :previous-modal previous-modal}
