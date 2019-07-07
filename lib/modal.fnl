@@ -3,6 +3,8 @@
 (local windows (require :lib.windows))
 (local {:concat concat
         :find   find
+        :filter filter
+        :get    get
         :join   join
         :map    map
         :merge  merge
@@ -106,7 +108,11 @@
 
 (fn bind-menu-keys
   [items]
-  (-> (map bind-item items)
+  (-> items
+      (->> (filter (fn [item]
+                     (or item.action
+                         item.items)))
+           (map bind-item))
       (concat [{:key :ESCAPE
                 :action deactivate-modal}])
       (bind-keys)))
@@ -135,17 +141,18 @@
 
 (fn format-key
   [item]
-  (.. (->> []
-           (or item.mods)
-           (map (fn [m] (or (. mod-chars m) m)))
-           (join "+"))
-      (if item.mods "+" "")
-      item.key))
+  (let [mods (-?>> item.mods
+                  (map (fn [m] (or (. mod-chars m) m)))
+                  (join "+"))]
+    (.. (or mods "")
+        (if mods "+" "")
+        item.key)))
 
 
 (fn modal-alert
   [menu]
-  (let [items (->> (. menu :items)
+  (let [items (->> menu.items
+                   (filter (fn [item] item.title))
                    (map (fn [item]
                           [(format-key item) (. item :title)]))
                    (align-columns))

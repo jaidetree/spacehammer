@@ -1,4 +1,5 @@
 (local windows (require :lib.windows))
+(local {:logf logf} (require :lib.functional))
 
 ;; Default Config
 ;; - It is not recommended to edit this file.
@@ -59,20 +60,24 @@
         {:key :w
          :title "Window"
          :items [{:mods [:cmd]
+                  :key "hjkl"
+                  :title "Jump"}
+                 {:mods [:cmd]
                   :key :h
-                  :title "Jump Left ←"
-                  :action (fn [] true)}
+                  :action (logf "Jump Left")
+                  :repeatable true}
                  {:mods [:cmd]
                   :key :j
-                  :title "Jump Down ↓"
-                  :action (fn [] true)}
+                  :action (logf "Jump Down")
+                  :repeatable true}
                  {:mods [:cmd]
                   :key :k
-                  :title "Jump Up ↓"}
+                  :action (logf "Jump Up")
+                  :repeatable true}
                  {:mods [:cmd]
                   :key :l
-                  :title "Jump Right →"
-                  :action (fn [] true)}]}
+                  :action (logf "Jump Right")
+                  :repeatable true}]}
         {:key :a
          :title "Apps"
          :items [{:key :e

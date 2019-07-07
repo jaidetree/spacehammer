@@ -17,6 +17,13 @@
     (fn [x]
       (print (table.unpack prefixes) (hs.inspect x)))))
 
+(fn get
+  [prop-name tbl]
+  (if tbl
+      (. prop-name tbl)
+      (fn [tbl]
+        (. tbl prop-name))))
+
 (fn split
   [search str]
   (fu.split str search))
@@ -97,13 +104,14 @@
 
 {:concat concat
  :filter filter
- :find find
- :join join
- :logf logf
- :map map
- :merge merge
+ :get    get
+ :find   find
+ :join   join
+ :logf   logf
+ :map    map
+ :merge  merge
  :reduce reduce
- :seq seq
- :seq? seq?
- :split split
- :tap tap}
+ :seq    seq
+ :seq?   seq?
+ :split  split
+ :tap    tap}
