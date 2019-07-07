@@ -2,14 +2,11 @@
 (local statemachine (require :lib.statemachine))
 (local windows (require :lib.windows))
 (local {:concat concat
-        :filter filter
-        :find find
-        :join join
-        :map map
-        :merge merge
-        :reduce reduce
-        :split split
-        :tap tap}
+        :find   find
+        :join   join
+        :map    map
+        :merge  merge
+        :tap    tap}
        (require :lib.functional))
 (local {:align-columns align-columns}
        (require :lib.text))
@@ -102,7 +99,8 @@
 
 (fn bind-item
   [item]
-  {:key item.key
+  {:mods (or item.mods [])
+   :key item.key
    :action (select-trigger item)})
 
 
@@ -130,13 +128,26 @@
 
 ;; Display Modals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(local mod-chars {:cmd "⌘"
+                  :alt "⌥"
+                  :shift "⇧"
+                  :tab "⇥"})
+
+(fn format-key
+  [item]
+  (.. (->> []
+           (or item.mods)
+           (map (fn [m] (or (. mod-chars m) m)))
+           (join "+"))
+      (if item.mods "+" "")
+      item.key))
 
 
 (fn modal-alert
   [menu]
   (let [items (->> (. menu :items)
                    (map (fn [item]
-                          [(. item :key) (. item :title)]))
+                          [(format-key item) (. item :title)]))
                    (align-columns))
         text (join "\n" items)]
     (hs.alert.closeAll)
@@ -170,13 +181,9 @@
   [target menus]
   (find
    (fn [item]
-     (= (. item :key) target))
+     (and (= (. item :key) target)
+          (or item.items item.keys)))
    menus))
-
-
-(fn get-menu
-  [parent group target]
-  (find-menu target (. parent group)))
 
 
 ;; State Transitions
@@ -187,7 +194,9 @@
   [state data]
   (let [{:config config
          :app app} state
-        menu (if app
+        app-menu (when app
+                   (find-menu app config.apps))
+        menu (if (and app-menu (> (# app-menu.items) 0))
                  (find-menu app config.apps)
                  config)]
     (merge {:status :active}
@@ -364,10 +373,9 @@
 (fn init
   [config]
   (let [active-app (active-app-name)
-        app-menu (find-menu active-app config.apps)
         initial-state {:status :idle
                        :config config
-                       :app (when app-menu active-app)
+                       :app nil
                        :menu nil
                        :unbind-keys nil
                        :unbind-app-keys nil
@@ -376,9 +384,9 @@
         app-watcher (hs.application.watcher.new watch-apps)]
     (set fsm (statemachine.new states initial-state :status))
     (bind-global-keys (or config.keys []))
-    (lifecycle.activate-app app-menu)
     (start-logger fsm)
     (: app-watcher :start)
+    (enter-app active-app)
     (fn cleanup []
       (: menu-hotkey :delete)
       (: app-watcher :stop))))
