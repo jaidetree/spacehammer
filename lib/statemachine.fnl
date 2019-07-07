@@ -46,7 +46,7 @@ Returns the state-atom.
      (fn [state]
        (-> {}
            (merge state update)
-           )))))
+           (remove-nils update))))))
 
 "
 Dispatch Error

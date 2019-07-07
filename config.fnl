@@ -1,21 +1,29 @@
-(local windows (require :lib.windows))
-(local {:logf logf} (require :lib.functional))
+(local windows (require :windows))
+(local {:concat concat
+        :logf logf} (require :lib.functional))
 
 ;; Default Config
 ;; - It is not recommended to edit this file.
 ;; - Changes may conflict with upstream updates.
-;; - Edit ~/.hammerspoon/private folder instead.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; - Create a ~/.hammerspoon/private/config.fnl file instead.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; [ ] w - windows
-;; [ ] |-- cmd + hjkl - jumping
-;; [ ] |-- hjkl - halves
-;; [ ] |-- alt + hjkl - increments
-;; [ ] |-- shift + hjkl - resize
-;; [ ] |-- n, p - next, previous screen
-;; [ ] |-- g - grid
-;; [ ] |-- m - maximize
-;; [ ] |-- u - undo
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Table of Contents
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; [x] w - windows
+;; [x] |-- w - Last window
+;; [x] |-- cmd + hjkl - jumping
+;; [x] |-- hjkl - halves
+;; [x] |-- alt + hjkl - increments
+;; [x] |-- shift + hjkl - resize
+;; [x] |-- n, p - next, previous screen
+;; [x] |-- shift + n, p - up, down screen
+;; [x] |-- g - grid
+;; [x] |-- m - maximize
+;; [x] |-- c - center
+;; [x] |-- u - undo
 ;;
 ;; [x] a - apps
 ;; [x] |-- e - emacs
@@ -46,12 +54,199 @@
   (fn activate []
     (windows.activate-app app-name)))
 
-;; Config
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; General
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local music-app
        "Spotify")
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Windows
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(local window-jumps
+       [{:mods [:cmd]
+         :key "hjkl"
+         :title "Jump"}
+        {:mods [:cmd]
+         :key :h
+         :action "windows:jump-window-left"
+         :repeatable true}
+        {:mods [:cmd]
+         :key :j
+         :action "windows:jump-window-above"
+         :repeatable true}
+        {:mods [:cmd]
+         :key :k
+         :action "windows:jump-window-below"
+         :repeatable true}
+        {:mods [:cmd]
+         :key :l
+         :action "windows:jump-window-right"
+         :repeatable true}])
+
+(local window-halves
+       [{:key "hjkl"
+         :title "Halves"}
+        {:key :h
+         :action "windows:resize-half-left"
+         :repeatable true}
+        {:key :j
+         :action "windows:resize-half-bottom"
+         :repeatable true}
+        {:key :k
+         :action "windows:resize-half-top"
+         :repeatable true}
+        {:key :l
+         :action "windows:resize-half-right"
+         :repeatable true}])
+
+(local window-increments
+       [{:mods [:alt]
+         :key "hjkl"
+         :title "Increments"}
+        {:mods [:alt]
+         :key :h
+         :action "windows:resize-inc-left"
+         :repeatable true}
+        {:mods [:alt]
+         :key :j
+         :action "windows:resize-inc-bottom"
+         :repeatable true}
+        {:mods [:alt]
+         :key :k
+         :action "windows:resize-inc-top"
+         :repeatable true}
+        {:mods [:alt]
+         :key :l
+         :action "windows:resize-inc-right"
+         :repeatable true}])
+
+(local window-resize
+       [{:mods [:shift]
+         :key "hjkl"
+         :title "Resize"}
+        {:mods [:shift]
+         :key :h
+         :action "windows:resize-left"
+         :repeatable true}
+        {:mods [:shift]
+         :key :j
+         :action "windows:resize-down"
+         :repeatable true}
+        {:mods [:shift]
+         :key :k
+         :action "windows:resize-up"
+         :repeatable true}
+        {:mods [:shift]
+         :key :l
+         :action "windows:resize-right"
+         :repeatable true}])
+
+(local window-move-screens
+       [{:key "n, p"
+         :title "Move next\\previous screen"}
+        {:mods [:shift]
+         :key "n, p"
+         :title "Move up\\down screens"}
+        {:key :n
+         :action "windows:move-south"
+         :repeatable true}
+        {:key :p
+         :action "windows:move-north"
+         :repeatable true}
+        {:mods [:shift]
+         :key :n
+         :action "windows:move-west"
+         :repeatable true}
+        {:mods [:shift]
+         :key :p
+         :action "windows:move-east"
+         :repeatable true}])
+
+(local window-bindings
+       (concat
+        [{:key :space
+          :title "Back"
+          :action :previous}
+         {:key :w
+          :title "Last Window"
+          :action "windows:jump-to-last-window"}]
+        window-jumps
+        window-halves
+        window-increments
+        window-resize
+        window-move-screens
+        [{:key :m
+          :title "Maximize"
+          :action "windows:maximize-window-frame"}
+         {:key :c
+          :title "Center"
+          :action "windows:center-window-frame"}
+         {:key :g
+          :title "Grid"
+          :action "windows:show-grid"}
+         {:key :u
+          :title "Undo"
+          :action "windows:undo-action"}]))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Apps Menu
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(local app-bindings
+       [{:key :e
+         :title "Emacs"
+         :action (activator "Emacs")}
+        {:key :g
+         :title "Chrome"
+         :action (activator "Google Chrome")}
+        {:key :f
+         :title "Firefox"
+         :action (activator "Firefox")}
+        {:key :i
+         :title "iTerm"
+         :action (activator "iTerm2")}
+        {:key :s
+         :title "Slack"
+         :action (activator "Slack")}
+        {:key :b
+         :title "Brave"
+         :action (activator "Brave")}
+        {:key :m
+         :title music-app
+         :action (activator music-app)}])
+
+(local media-bindings
+       [{:key :s
+         :title "Play or Pause"
+         :action "multimedia:play-or-pause"}
+        {:key :h
+         :title "Prev Track"
+         :action "multimedia:prev-track"}
+        {:key :l
+         :title "Next Track"
+         :action "multimedia:next-track"}
+        {:key :j
+         :title "Volume Down"
+         :action "multimedia:volume-down"
+         :repeatable true}
+        {:key :k
+         :title "Volume Up"
+         :action "multimedia:volume-up"
+         :repeatable true}
+        {:key :a
+         :title (.. "Launch " music-app)
+         :action (activator music-app)}])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Main Menu & Config
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local menu-items
        [{:key :space
@@ -59,48 +254,10 @@
          :action (activator "Alfred 4")}
         {:key :w
          :title "Window"
-         :items [{:mods [:cmd]
-                  :key "hjkl"
-                  :title "Jump"}
-                 {:mods [:cmd]
-                  :key :h
-                  :action (logf "Jump Left")
-                  :repeatable true}
-                 {:mods [:cmd]
-                  :key :j
-                  :action (logf "Jump Down")
-                  :repeatable true}
-                 {:mods [:cmd]
-                  :key :k
-                  :action (logf "Jump Up")
-                  :repeatable true}
-                 {:mods [:cmd]
-                  :key :l
-                  :action (logf "Jump Right")
-                  :repeatable true}]}
+         :items window-bindings}
         {:key :a
          :title "Apps"
-         :items [{:key :e
-                  :title "Emacs"
-                  :action (activator "Emacs")}
-                 {:key :g
-                  :title "Chrome"
-                  :action (activator "Google Chrome")}
-                 {:key :f
-                  :title "Firefox"
-                  :action (activator "Firefox")}
-                 {:key :i
-                  :title "iTerm"
-                  :action (activator "iTerm2")}
-                 {:key :s
-                  :title "Slack"
-                  :action (activator "Slack")}
-                 {:key :b
-                  :title "Brave"
-                  :action (activator "Brave")}
-                 {:key :m
-                  :title music-app
-                  :action (activator music-app)}]}
+         :items app-bindings}
         {:key :j
          :title "Jump"
          :action (fn [] true)}
@@ -110,26 +267,7 @@
          ;;          (print "Entering menu: " (hs.inspect menu)))
          ;; :exit (fn [menu]
          ;;         (print "Exiting menu: " (hs.inspect menu)))
-         :items [{:key :s
-                  :title "Play or Pause"
-                  :action "multimedia:play-or-pause"}
-                 {:key :h
-                  :title "Prev Track"
-                  :action "multimedia:prev-track"}
-                 {:key :l
-                  :title "Next Track"
-                  :action "multimedia:next-track"}
-                 {:key :j
-                  :title "Volume Down"
-                  :action "multimedia:volume-down"
-                  :repeatable true}
-                 {:key :k
-                  :title "Volume Up"
-                  :action "multimedia:volume-up"
-                  :repeatable true}
-                 {:key :a
-                  :title (.. "Launch " music-app)
-                  :action (activator music-app)}]}])
+         :items media-bindings}])
 
 (local common-keys
        [{:mods [:cmd]
@@ -137,24 +275,21 @@
          :action (fn []
                    (alert "Pressed CMD+h"))}])
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; App Specific Config
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (local apps
        [{:key "Hammerspoon"
-         :enter (fn []
-                  (print "Entering Hammerspoon :D"))
-         :exit (fn []
-                 (print "Exiting Hammerspoon T_T"))
-         :activate (fn []
-                     (print "Activating Hammerspoon"))
-         :deactivate (fn []
-                     (print "Deactivating Hammerspoon"))
-         :items [{:key :r
-                  :title "Reload Config"
-                  :action hs.reload}
-                 {:key :c
-                  :title "Console"
-                  :items [{:key :c
-                           :title "Clear"
-                           :action hs.console.clearConsole}]}]
+         ;; :enter (fn []
+         ;;          (print "Entering Hammerspoon :D"))
+         ;; :exit (fn []
+         ;;         (print "Exiting Hammerspoon T_T"))
+         ;; :activate (fn []
+         ;;             (print "Activating Hammerspoon"))
+         ;; :deactivate (fn []
+         ;;             (print "Deactivating Hammerspoon"))
+         :items []
          :keys [{:mods [:cmd]
                  :key :y
                  :action (fn []
@@ -171,9 +306,10 @@
                            (alert "Hi Emacs"))}]}])
 
 (local config
-        {:items menu-items
-         :keys common-keys
-         :apps apps})
+       {:title "Main Menu"
+        :items menu-items
+        :keys common-keys
+        :apps apps})
 
 ;; Exports
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

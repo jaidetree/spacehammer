@@ -144,18 +144,18 @@
 ;; Display Modals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(local mod-chars {:cmd "⌘"
-                  :alt "⌥"
-                  :shift "⇧"
-                  :tab "⇥"})
+(local mod-chars {:cmd "CMD"
+                  :alt "OPT"
+                  :shift "SHFT"
+                  :tab "TAB"})
 
 (fn format-key
   [item]
   (let [mods (-?>> item.mods
                   (map (fn [m] (or (. mod-chars m) m)))
-                  (join "+"))]
+                  (join " "))]
     (.. (or mods "")
-        (if mods "+" "")
+        (if mods " + " "")
         item.key)))
 
 
@@ -169,7 +169,8 @@
         text (join "\n" items)]
     (hs.alert.closeAll)
     (alert text
-           {:textFont "Courier New"
+           {:textFont "Menlo"
+            :textSize 16
             :radius 0
             :strokeWidth 0}
            99999)))
@@ -342,12 +343,6 @@
                                    :menu         config})))
         nil)))
 
-(fn list-history
-  [history]
-  (print
-   "History: "
-   (hs.inspect (map (get :title) history))))
-
 (fn submenu->previous
   [state]
   (let [{:config config
@@ -357,7 +352,6 @@
         navigate (if main-menu
                      idle->active
                      active->submenu)]
-    (print "Returning to main menu? " main-menu)
     (navigate (merge state
                      {:history history}))))
 
@@ -412,8 +406,7 @@
    (fn log-state
      [state]
      (print "state is now: " state.status)
-     (print "app is now: " state.app)
-     (list-history state.history))))
+     (print "app is now: " state.app))))
 
 
 (fn active-app-name
