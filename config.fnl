@@ -84,6 +84,11 @@
 (local music-app
        "Spotify")
 
+(local return
+       {:key :space
+        :title "Back"
+        :action :previous})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Windows
@@ -191,9 +196,7 @@
 
 (local window-bindings
        (concat
-        [{:key :space
-          :title "Back"
-          :action :previous}
+        [return
          {:key :w
           :title "Last Window"
           :action "windows:jump-to-last-window"}]
@@ -221,7 +224,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local app-bindings
-       [{:key :e
+       [return
+        {:key :e
          :title "Emacs"
          :action (activator "Emacs")}
         {:key :g
@@ -244,7 +248,8 @@
          :action (activator music-app)}])
 
 (local media-bindings
-       [{:key :s
+       [return
+        {:key :s
          :title "Play or Pause"
          :action "multimedia:play-or-pause"}
         {:key :h
