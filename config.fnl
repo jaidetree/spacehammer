@@ -1,5 +1,6 @@
 (local windows (require :windows))
 (local {:concat concat
+        :filter filter
         :logf logf} (require :lib.functional))
 
 ;; Default Config
@@ -33,7 +34,7 @@
 ;; [x] |-- s - Slack
 ;; [x] |-- b - Brave
 ;;
-;; [ ] j - jump
+;; [x] j - jump
 ;;
 ;; [x] m - media
 ;; [x] |-- h - previous track
@@ -49,10 +50,31 @@
 ;; |-- f - fullscreen
 ;; |-- v - split
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fn allowed-app?
+  [window]
+  (if (: window :isStandard)
+      true
+      false))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Actions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (fn activator
   [app-name]
   (fn activate []
     (windows.activate-app app-name)))
+
+(fn jump []
+  (let [wns (->> (hs.window.allWindows)
+                 (filter allowed-app?))]
+    (hs.hints.windowHints wns nil true)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -260,7 +282,7 @@
          :items app-bindings}
         {:key :j
          :title "Jump"
-         :action (fn [] true)}
+         :action jump}
         {:key :m
          :title "Media"
          ;; :enter (fn [menu]
