@@ -3,9 +3,25 @@
 ;; Simple Utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(fn call-when
+  [f]
+  (when (and f (= (type f) :function))
+    (f)))
+
 (fn find
   [f tbl]
   (fu.find tbl f))
+
+(fn get
+  [prop-name tbl]
+  (if tbl
+      (. prop-name tbl)
+      (fn [tbl]
+        (. tbl prop-name))))
+
+(fn has-some?
+  [list]
+  (and list (> (# list) 0)))
 
 (fn join
   [sep list]
@@ -20,13 +36,6 @@
   (let [prefixes [...]]
     (fn [x]
       (print (table.unpack prefixes) (hs.inspect x)))))
-
-(fn get
-  [prop-name tbl]
-  (if tbl
-      (. prop-name tbl)
-      (fn [tbl]
-        (. tbl prop-name))))
 
 (fn slice-start-end
   [start end list]
@@ -127,18 +136,20 @@
 ;; Exports
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-{:concat concat
- :filter filter
- :get    get
- :find   find
- :join   join
- :last   last
- :logf   logf
- :map    map
- :merge  merge
- :reduce reduce
- :seq    seq
- :seq?   seq?
- :slice  slice
- :split  split
- :tap    tap}
+{:call-when call-when
+ :concat    concat
+ :filter    filter
+ :get       get
+ :find      find
+ :has-some? has-some?
+ :join      join
+ :last      last
+ :logf      logf
+ :map       map
+ :merge     merge
+ :reduce    reduce
+ :seq       seq
+ :seq?      seq?
+ :slice     slice
+ :split     split
+ :tap       tap}

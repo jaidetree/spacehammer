@@ -73,7 +73,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Initialize modals
+;; Initialize Modals & Apps
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local config (if (file-exists? (.. hs.configdir "/private/config.fnl"))
@@ -81,4 +81,6 @@
                   (require :config)))
 
 (local modal (require :lib.modal))
+(local apps (require :lib.apps))
 (modal.init config)
+(apps.init config)

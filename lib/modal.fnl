@@ -1,15 +1,18 @@
 (local atom (require :lib.atom))
 (local statemachine (require :lib.statemachine))
-(local {:concat concat
-        :find   find
-        :filter filter
-        :get    get
-        :join   join
-        :last   last
-        :map    map
-        :merge  merge
-        :slice  slice
-        :tap    tap}
+(local apps (require :lib.apps))
+(local {:call-when call-when
+        :concat    concat
+        :find      find
+        :filter    filter
+        :get       get
+        :has-some? has-some?
+        :join      join
+        :last      last
+        :map       map
+        :merge     merge
+        :slice     slice
+        :tap       tap}
        (require :lib.functional))
 (local {:align-columns align-columns}
        (require :lib.text))
@@ -21,14 +24,9 @@
 (var fsm nil)
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General Utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(fn call-when
-  [f]
-  (when (and f (= (type f) :function))
-    (f)))
-
 
 (fn timeout
   [f]
@@ -40,6 +38,7 @@
         nil))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Event Dispatchers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -63,15 +62,8 @@
   []
   (fsm.dispatch :start-timeout))
 
-(fn enter-app
-  [app-name]
-  (fsm.dispatch :enter-app app-name))
 
-(fn leave-app
-  [app-name]
-  (fsm.dispatch :leave-app app-name))
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set Key Bindings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -127,11 +119,6 @@
       (bind-keys)))
 
 
-(fn bind-app-keys
-  [items]
-  (bind-keys items))
-
-
 (fn bind-global-keys
   [items]
   (each [_ item (ipairs items)]
@@ -141,6 +128,7 @@
       (hs.hotkey.bind mods key action-fn))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display Modals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -195,19 +183,18 @@
                 [])})
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Menus, & Config Navigation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(fn find-menu
-  [target menus]
-  (find
-   (fn [item]
-     (and (= (. item :key) target)
-          (or item.items item.keys)))
-   menus))
+(fn by-key
+  [target]
+  (fn [item]
+    (and (= (. item :key) target)
+         (or (has-some? item.items) (has-some? item.keys)))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; State Transitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -215,13 +202,11 @@
 (fn idle->active
   [state data]
   (let [{:config config
-         :app app
          :stop-timeout stop-timeout
          :unbind-keys unbind-keys} state
-        app-menu (when app
-                   (find-menu app config.apps))
-        menu (if (and app-menu (> (# app-menu.items) 0))
-                 (find-menu app config.apps)
+        app-menu (apps.get-app)
+        menu (if (and app-menu (has-some? app-menu.items))
+                 app-menu
                  config)]
     (merge {:status :active}
            (show-modal-menu {:menu menu
@@ -229,46 +214,18 @@
                              :unbind-keys unbind-keys}))))
 
 
-(fn idle->enter-app
-  [state app-name]
-  (let [{:config config
-         :app app
-         :unbind-app-keys unbind-app-keys} state
-        prev-app (find-menu app config.apps)
-        app-menu (find-menu app-name config.apps)]
-    (when app-menu
-      (call-when unbind-app-keys)
-      (lifecycle.deactivate-app prev-app)
-      (lifecycle.activate-app app-menu)
-      {:app app-name
-       :unbind-app-keys (bind-app-keys app-menu.keys)})))
-
-
-(fn idle->leave-app
-  [state app-name]
-  (let [{:config config
-         :app current-app
-         :unbind-app-keys unbind-app-keys} state
-        prev-app (find-menu current-app config.apps)]
-    (if (= current-app app-name)
-        (do (call-when unbind-app-keys)
-            (lifecycle.deactivate-app prev-app)
-            {:app :nil
-             :unbind-app-keys :nil})
-        nil)))
-
-
 (fn active->idle
   [state data]
   (let [{:menu prev-menu} state]
     (hs.alert.closeAll)
     (call-when state.stop-timeout)
+    (call-when state.unbind-keys)
     (lifecycle.exit-menu prev-menu)
     {:status :idle
      :menu :nil
      :stop-timeout :nil
      :history []
-     :unbind-keys (state.unbind-keys)}))
+     :unbind-keys :nil}))
 
 
 (fn active->submenu
@@ -279,7 +236,7 @@
          :unbind-keys unbind-keys
          :history history} state
         menu (if menu-key
-                 (find-menu menu-key prev-menu.items)
+                 (find (by-key menu-key) prev-menu.items)
                  config)]
     (merge {:status :submenu}
            (show-modal-menu {:stop-timeout stop-timeout
@@ -295,54 +252,6 @@
   {:stop-timeout (timeout deactivate-modal)})
 
 
-(fn active->enter-app
-  [state app-name]
-  (let [{:config config
-         :app prev-app
-         :stop-timeout stop-timeout
-         :menu prev-menu
-         :unbind-keys unbind-keys
-         :unbind-app-keys unbind-app-keys} state
-        app-menu (find-menu app-name config.apps)
-        prev-app-menu (find-menu prev-app config.apps)]
-    (if app-menu
-        (do
-          (print (.. "Entered " app-name " while in root menu?")
-                 (= prev-menu config))
-          (call-when unbind-app-keys)
-          (lifecycle.deactivate-app prev-app-menu)
-          (lifecycle.activate-app app-menu)
-          (merge {:status :active
-                  :app    app-name
-                  :unbind-app-keys (bind-app-keys app-menu.keys)}
-                 (show-modal-menu {:stop-timeout stop-timeout
-                                   :unbind-keys  unbind-keys
-                                   :prev-menu    prev-menu
-                                   :menu         app-menu
-                                   :history      history})))
-        nil)))
-
-
-(fn active->leave-app
-  [state app-name]
-  (let [{:config       config
-         :app          current-app
-         :stop-timeout stop-timeout
-         :unbind-keys  unbind-keys
-         :unbind-app-keys unbind-app-keys} state
-        prev-app-menu (find-menu current-app config.apps)]
-    (if (= current-app app-name)
-        (do
-          (call-when unbind-app-keys)
-          (lifecycle.deactivate-app prev-app-menu)
-          (merge {:menu :nil
-                  :app  :nil
-                  :unbind-app-keys :nil}
-                 (show-modal-menu {:stop-timeout stop-timeout
-                                   :unbind-keys  unbind-keys
-                                   :menu         config})))
-        nil)))
-
 (fn submenu->previous
   [state]
   (let [{:config config
@@ -356,47 +265,25 @@
                      {:history history}))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Finite State Machine States
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (local states
-       {:idle   {:activate       idle->active
-                 :enter-app      idle->enter-app
-                 :leave-app      idle->leave-app}
+       {:idle   {:activate       idle->active}
         :active {:deactivate     active->idle
                  :activate       active->submenu
-                 :enter-app      active->enter-app
-                 :leave-app      active->leave-app
                  :start-timeout  active->timeout}
         :submenu {:deactivate    active->idle
                   :activate      active->submenu
                   :previous      submenu->previous
-                  :enter-app     idle->enter-app
-                  :leave-app     idle->leave-app
                   :start-timeout active->timeout}})
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Watchers, Dispatchers, & Logging
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(local app-events
-       {hs.application.watcher.activated   :activated
-        hs.application.watcher.deactivated :deactivated
-        hs.application.watcher.hidden      :hidden
-        hs.application.watcher.launched    :launched
-        hs.application.watcher.launching   :launching
-        hs.application.watcher.terminated  :terminated
-        hs.application.watcher.unhidden    :unhidden})
-
-
-(fn watch-apps
-  [app-name event app]
-  (let [event-type (. app-events event)]
-    (if (= event-type :activated)
-        (enter-app app-name)
-        (= event-type :deactivated)
-        (leave-app app-name))))
 
 
 (fn start-logger
@@ -405,43 +292,33 @@
    fsm.state :log-state
    (fn log-state
      [state]
-     (print "state is now: " state.status)
-     (print "app is now: " state.app))))
+     (print "state is now: " state.status))))
 
 
-(fn active-app-name
-  []
-  (let [app (hs.application.frontmostApplication)]
-    (if app
-        (: app :name)
-        nil)))
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (fn init
   [config]
-  (let [active-app (active-app-name)
-        initial-state {:config config
-                       :app nil
+  (let [initial-state {:config config
                        :history []
                        :menu nil
                        :status :idle
                        :stop-timeout nil
-                       :unbind-keys nil
-                       :unbind-app-keys nil}
-        menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
-        app-watcher (hs.application.watcher.new watch-apps)]
+                       :unbind-keys nil}
+        menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)]
     (set fsm (statemachine.new states initial-state :status))
+    ;; Move this into core
     (bind-global-keys (or config.keys []))
     (start-logger fsm)
-    (: app-watcher :start)
-    (enter-app active-app)
     (fn cleanup []
-      (: menu-hotkey :delete)
-      (: app-watcher :stop))))
+      (: menu-hotkey :delete))))
 
 
-{:init init
- :previous-modal previous-modal}
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Exports
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+{:init init}
