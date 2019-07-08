@@ -1,6 +1,10 @@
+(local fennel (require :fennel))
 (require-macros :lib.macros)
-(hs.console.clearConsole)
+;; (hs.console.clearConsole)
 (hs.ipc.cliInstall) ; ensure CLI installed
+
+;; Make private folder override repo files
+(tset fennel :path (.. "./private/?.fnl;" fennel.path))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; defaults
