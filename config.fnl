@@ -3,11 +3,16 @@
         :filter filter
         :logf logf} (require :lib.functional))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Default Config
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;; - It is not recommended to edit this file.
 ;; - Changes may conflict with upstream updates.
 ;; - Create a ~/.hammerspoon/private/config.fnl file instead.
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Table of Contents
@@ -44,11 +49,15 @@
 ;; [x] |-- s - play\pause
 ;; [x] |-- a - launch player
 ;;
-;; x - emacs
-;; |-- c - capture
-;; |-- z - note
-;; |-- f - fullscreen
-;; |-- v - split
+;; [x] x - emacs
+;; [x] |-- c - capture
+;; [x] |-- z - note
+;; [x] |-- f - fullscreen
+;; [x] |-- v - split
+;;
+;;
+;; [x] cmd-n - next-app
+;; [x] cmd-p - prev-app
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -270,6 +279,21 @@
          :title (.. "Launch " music-app)
          :action (activator music-app)}])
 
+(local emacs-bindings
+       [return
+        {:key :c
+         :title "Capture"
+         :action "emacs:capture"}
+        {:key :z
+         :title "Note"
+         :action "emacs:note"}
+        {:key :v
+         :title "Split"
+         :action "emacs:vertical-split-with-emacs"}
+        {:key :f
+         :title "Full Screen"
+         :action "emacs:full-screen"}])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main Menu & Config
@@ -294,18 +318,27 @@
          ;;          (print "Entering menu: " (hs.inspect menu)))
          ;; :exit (fn [menu]
          ;;         (print "Exiting menu: " (hs.inspect menu)))
-         :items media-bindings}])
+         :items media-bindings}
+        {:key :x
+         :title "Emacs"
+         :items emacs-bindings}])
 
 (local common-keys
        [{:mods [:cmd]
-         :key "h"
-         :action (fn []
-                   (alert "Pressed CMD+h"))}])
+         :key :n
+         :action "apps:next-app"}
+        {:mods [:cmd]
+         :key :p
+         :action "apps:prev-app"}
+        {:mods [:cmd :ctrl]
+         :key :o
+         :action "emacs:edit-with-emacs"}])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; App Specific Config
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (local apps
        [{:key "Hammerspoon"
          ;; :enter (fn []

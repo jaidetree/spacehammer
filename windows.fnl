@@ -285,6 +285,7 @@
  :move-north              move-north
  :move-south              move-south
  :move-west               move-west
+ :rect                    rect
  :resize-half-bottom      resize-half-bottom
  :resize-half-left        resize-half-left
  :resize-half-right       resize-half-right
