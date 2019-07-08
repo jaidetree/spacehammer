@@ -1,5 +1,6 @@
 (local atom (require :lib.atom))
 (local statemachine (require :lib.statemachine))
+(local os (require :os))
 (local {:call-when call-when
         :concat    concat
         :find      find
@@ -18,7 +19,24 @@
        (require :lib.bindings))
 (local lifecycle (require :lib.lifecycle))
 
+(local actions (atom.new nil))
 (var fsm nil)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utils
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fn gen-key
+  []
+  (var nums "")
+  (for [i 1 7]
+    (set nums (.. nums (math.random 0 9))))
+  (string.sub (hs.base64.encode nums) 1 7))
+
+(fn emit
+  [action data]
+  (atom.swap! actions (fn [] [action data])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41,6 +59,7 @@
 (fn bind-app-keys
   [items]
   (bind-keys items))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Apps Navigation
@@ -68,7 +87,8 @@
       (lifecycle.deactivate-app prev-app)
       (lifecycle.activate-app next-app)
       {:app next-app
-       :unbind-keys (bind-app-keys next-app.keys)})))
+       :unbind-keys (bind-app-keys next-app.keys)
+       :action :enter-app})))
 
 
 (fn idle->leave-app
@@ -79,14 +99,15 @@
         (do (call-when unbind-keys)
             (lifecycle.deactivate-app prev-app)
             {:app :nil
-             :unbind-keys :nil})
+             :unbind-keys :nil
+             :action :leave-app})
         nil)))
 
 (fn in-app->enter-app
   [state app-name]
   (let [{:apps apps
          :app prev-app
-         :unbind-keys unbind-keys} state
+         :un:enbind-keys unbind-keys} state
         next-app (find (by-key app-name) apps)]
     (if next-app
         (do
@@ -94,7 +115,8 @@
           (lifecycle.deactivate-app prev-app)
           (lifecycle.activate-app next-app)
           {:app next-app
-           :unbind-keys (bind-app-keys next-app.keys)})
+           :unbind-keys (bind-app-keys next-app.keys)
+           :action :enter-app})
         nil)))
 
 (fn in-app->leave-app
@@ -107,7 +129,8 @@
           (call-when unbind-keys)
           (lifecycle.deactivate-app current-app)
           {:app :nil
-           :unbind-keys :nil})
+           :unbind-keys :nil
+           :action :leave-app})
         nil)))
 
 
@@ -120,6 +143,7 @@
                  :leave-app      idle->leave-app}
         :in-app {:enter-app      in-app->enter-app
                  :leave-app      in-app->leave-app}})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Watchers, Dispatchers, & Logging
@@ -158,6 +182,14 @@
      [state]
      (print "app is now: " (and state.app state.app.key)))))
 
+(fn proxy-actions
+  [fsm]
+  (atom.add-watch fsm.state :actions
+                  (fn action-watcher
+                    [state]
+                    (when state.app
+                      (emit state.action state.app)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API Methods
@@ -169,6 +201,15 @@
     (let [state (atom.deref fsm.state)]
       state.app)))
 
+(fn subscribe
+  [f]
+  (let [key (gen-key)]
+    (atom.add-watch actions key f)
+    (fn unsubscribe
+      []
+      (atom.remove-watch actions key))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -179,10 +220,12 @@
         initial-state {:apps config.apps
                        :app nil
                        :status :idle
-                       :unbind-keys nil}
+                       :unbind-keys nil
+                       :action nil}
         app-watcher (hs.application.watcher.new watch-apps)]
     (set fsm (statemachine.new states initial-state :status))
     (start-logger fsm)
+    (proxy-actions fsm)
     (enter-app active-app)
     (: app-watcher :start)
     (fn cleanup []
@@ -195,4 +238,5 @@
 
 
 {:init init
- :get-app get-app}
+ :get-app get-app
+ :subscribe subscribe}

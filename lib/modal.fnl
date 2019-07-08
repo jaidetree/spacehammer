@@ -7,6 +7,7 @@
         :filter    filter
         :get       get
         :has-some? has-some?
+        :identity  identity
         :join      join
         :last      last
         :map       map
@@ -227,6 +228,19 @@
      :history []
      :unbind-keys :nil}))
 
+(fn active->enter-app
+  [state app-menu]
+  (let [{:config config
+         :menu prev-menu
+         :stop-timeout stop-timeout
+         :unbind-keys unbind-keys
+         :history history} state]
+    (merge {:history [app-menu]}
+           (show-modal-menu {:stop-timeout stop-timeout
+                             :unbind-keys  unbind-keys
+                             :menu         app-menu
+                             :history      history}))))
+
 
 (fn active->submenu
   [state menu-key]
@@ -271,14 +285,20 @@
 
 
 (local states
-       {:idle   {:activate       idle->active}
+       {:idle   {:activate       idle->active
+                 :enter-app      identity
+                 :leave-app      identity}
         :active {:deactivate     active->idle
                  :activate       active->submenu
-                 :start-timeout  active->timeout}
+                 :start-timeout  active->timeout
+                 :enter-app      active->enter-app
+                 :leave-app      idle->active}
         :submenu {:deactivate    active->idle
                   :activate      active->submenu
                   :previous      submenu->previous
-                  :start-timeout active->timeout}})
+                  :start-timeout active->timeout
+                  :enter-app     identity
+                  :leave-app     identity}})
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -294,6 +314,10 @@
      [state]
      (print "state is now: " state.status))))
 
+(fn proxy-app-action
+  [[action data]]
+  (fsm.dispatch action data))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialization
@@ -307,12 +331,14 @@
                        :status :idle
                        :stop-timeout nil
                        :unbind-keys nil}
-        menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)]
+        menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
+        unsubscribe (apps.subscribe proxy-app-action)]
     (set fsm (statemachine.new states initial-state :status))
     ;; Move this into core
     (bind-global-keys (or config.keys []))
     (start-logger fsm)
     (fn cleanup []
+      (unsubscribe)
       (: menu-hotkey :delete))))
 
 

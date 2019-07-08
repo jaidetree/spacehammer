@@ -23,6 +23,9 @@
   [list]
   (and list (> (# list) 0)))
 
+(fn identity
+  [x] x)
+
 (fn join
   [sep list]
   (table.concat list sep))
@@ -142,6 +145,7 @@
  :get       get
  :find      find
  :has-some? has-some?
+ :identity  identity
  :join      join
  :last      last
  :logf      logf
