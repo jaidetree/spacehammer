@@ -1,6 +1,8 @@
 (local {:split split}
        (require :lib.functional))
 
+(local log (hs.logger.new "bind.fnl" "debug"))
+
 
 (fn create-action-fn
   [action]
@@ -10,9 +12,8 @@
         (if (. module fn-name)
             (: module fn-name)
             (do
-              (print (string.format
-                      "ERROR: Could not invoke action %s"
-                      action))))))))
+              (log.wf "ERROR: Could not invoke action %s"
+                     action)))))))
 
 
 (fn action->fn
@@ -21,9 +22,8 @@
     :function action
     :string (create-action-fn action)
     _         (do
-                (print (string.format
-                        "ERROR: Could not create action handler for %s"
-                        (hs.inspect action)))
+                (log.wf "ERROR: Could not create action handler for %s"
+                        (hs.inspect action))
                 (fn [] true))))
 
 

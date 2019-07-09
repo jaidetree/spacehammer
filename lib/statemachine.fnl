@@ -5,6 +5,8 @@
         :merge merge
         :tap tap} (require :lib.functional))
 
+(local log (hs.logger.new "statemachine.fnl" "debug"))
+
 "
 Transition
 Takes an action fn, state, and extra action data
@@ -55,8 +57,9 @@ action while in the current state.
 "
 (fn dispatch-error
   [current-state-key action-name]
-  (print (string.format "ERROR: Could not %s from %s state"
-                        action-name current-state-key)))
+  (log.wf "ERROR: Could not %s from %s state"
+          action-name
+          current-state-key))
 
 "
 Creates Dispatcher

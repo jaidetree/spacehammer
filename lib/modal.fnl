@@ -19,10 +19,10 @@
        (require :lib.text))
 (local {:action->fn action->fn
         :bind-keys bind-keys}
-       (require :lib.bindings))
+       (require :lib.bind))
 (local lifecycle (require :lib.lifecycle))
 
-(local log (hs.logger.new "modal.fnl", "debug"))
+(local log (hs.logger.new "modal.fnl" "debug"))
 (var fsm nil)
 
 
@@ -192,7 +192,7 @@
   [target]
   (fn [item]
     (and (= (. item :key) target)
-         (or (has-some? item.items) (has-some? item.keys)))))
+         (has-some? item.items))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -318,7 +318,7 @@
    fsm.state :log-state
    (fn log-state
      [state]
-     (print "state is now: " state.status))))
+     (log.df "state is now: %s" state.status))))
 
 (fn proxy-app-action
   [[action data]]

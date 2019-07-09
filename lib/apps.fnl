@@ -16,8 +16,11 @@
        (require :lib.functional))
 (local {:action->fn action->fn
         :bind-keys bind-keys}
-       (require :lib.bindings))
+       (require :lib.bind))
 (local lifecycle (require :lib.lifecycle))
+
+
+(local log (hs.logger.new "apps.fnl", "debug"))
 
 (local actions (atom.new nil))
 (var fsm nil)
@@ -169,7 +172,7 @@
    fsm.state :log-state
    (fn log-state
      [state]
-     (print "app is now: " (and state.app state.app.key)))))
+     (log.df "app is now: %s" (and state.app state.app.key)))))
 
 (fn proxy-actions
   [fsm]
