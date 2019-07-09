@@ -11,6 +11,7 @@
         :last      last
         :map       map
         :merge     merge
+        :noop      noop
         :slice     slice
         :tap       tap}
        (require :lib.functional))
@@ -54,6 +55,13 @@
   [app-name]
   (fsm.dispatch :leave-app app-name))
 
+(fn launch
+  [app-name]
+  (fsm.dispatch :launch-app app-name))
+
+(fn close
+  [app-name]
+  (fsm.dispatch :close-app app-name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set Key Bindings
@@ -71,8 +79,7 @@
 (fn by-key
   [target]
   (fn [app]
-    (and (= app.key target)
-         (or (has-some? app.items) (has-some? app.keys)))))
+    (= app.key target)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -126,15 +133,34 @@
            :action :leave-app})
         nil)))
 
+(fn ->launch
+  [state app-name]
+  (let [{:apps apps} state
+        app-menu (find (by-key app-name) apps)]
+    (lifecycle.launch-app app-menu)
+    nil))
+
+(fn ->close
+  [state app-name]
+  (let [{:apps apps} state
+        app-menu (find (by-key app-name) apps)]
+    (lifecycle.close-app app-menu)
+    nil))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Finite State Machine States
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local states
-       {:general-app {:enter-app general->enter}
-        :in-app      {:enter-app in-app->enter
-                      :leave-app in-app->leave}})
+       {:general-app {:enter-app  general->enter
+                      :leave-app  noop
+                      :launch-app ->launch
+                      :close-app  ->close}
+        :in-app      {:enter-app  in-app->enter
+                      :leave-app  in-app->leave
+                      :launch-app ->launch
+                      :close-app  ->close}})
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -157,7 +183,11 @@
     (if (= event-type :activated)
         (enter app-name)
         (= event-type :deactivated)
-        (leave app-name))))
+        (leave app-name)
+        (= event-type :launched)
+        (launch app-name)
+        (= event-type :terminated)
+        (close app-name))))
 
 (fn active-app-name
   []

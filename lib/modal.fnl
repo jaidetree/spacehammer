@@ -7,11 +7,11 @@
         :filter    filter
         :get       get
         :has-some? has-some?
-        :identity  identity
         :join      join
         :last      last
         :map       map
         :merge     merge
+        :noop      noop
         :slice     slice
         :tap       tap}
        (require :lib.functional))
@@ -22,7 +22,7 @@
        (require :lib.bind))
 (local lifecycle (require :lib.lifecycle))
 
-(local log (hs.logger.new "modal.fnl" "debug"))
+(local log (hs.logger.new "\tmodal.fnl\t" "debug"))
 (var fsm nil)
 
 
@@ -234,19 +234,27 @@
          :menu prev-menu
          :stop-timeout stop-timeout
          :unbind-keys unbind-keys
-         :history history} state]
-    (merge {:history [app-menu]}
-           (show-modal-menu {:stop-timeout stop-timeout
-                             :unbind-keys  unbind-keys
-                             :menu         (if (and app-menu (has-some? app-menu.items))
-                                               app-menu
-                                               config)
-                             :history      history}))))
+         :history history} state
+        menu (if (and app-menu (has-some? app-menu.items))
+                 app-menu
+                 config)]
+    (if (= menu.key prev-menu.key)
+        nil
+        (merge {:history [menu]}
+               (show-modal-menu
+                {:stop-timeout stop-timeout
+                 :unbind-keys  unbind-keys
+                 :menu         menu
+                 :history      history})))))
 
 
 (fn active->leave-app
   [state]
-  (idle->active state))
+  (let [{:config config
+        :menu prev-menu} state]
+    (if (= prev-menu.key config.key)
+        nil
+        (idle->active state))))
 
 (fn active->submenu
   [state menu-key]
@@ -292,19 +300,19 @@
 
 (local states
        {:idle   {:activate       idle->active
-                 :enter-app      identity
-                 :leave-app      identity}
+                 :enter-app      noop
+                 :leave-app      noop}
         :active {:deactivate     active->idle
                  :activate       active->submenu
                  :start-timeout  active->timeout
                  :enter-app      active->enter-app
-                 :leave-app      idle->active}
+                 :leave-app      active->leave-app}
         :submenu {:deactivate    active->idle
                   :activate      active->submenu
                   :previous      submenu->previous
                   :start-timeout active->timeout
-                  :enter-app     identity
-                  :leave-app     identity}})
+                  :enter-app     noop
+                  :leave-app     noop}})
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

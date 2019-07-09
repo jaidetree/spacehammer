@@ -40,6 +40,10 @@
     (fn [x]
       (print (table.unpack prefixes) (hs.inspect x)))))
 
+(fn noop
+  []
+  nil)
+
 (fn slice-start-end
   [start end list]
   (let [end (if (< end 0)
@@ -151,6 +155,7 @@
  :logf      logf
  :map       map
  :merge     merge
+ :noop      noop
  :reduce    reduce
  :seq       seq
  :seq?      seq?
