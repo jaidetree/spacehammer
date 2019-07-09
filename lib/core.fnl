@@ -16,7 +16,12 @@
 (set hs.hints.fontSize 30)
 (set hs.window.animationDuration 0.2)
 
-(global alert hs.alert.show)
+(global alert (fn 
+                [str style seconds]
+                (hs.alert.show str
+                               style
+                               (hs.screen.primaryScreen)
+                               seconds)))
 (global log (fn [s] (print (hs.inspect s) 5)))
 (global fw hs.window.focusedWindow)
 
