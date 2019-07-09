@@ -22,6 +22,7 @@
        (require :lib.bindings))
 (local lifecycle (require :lib.lifecycle))
 
+(local log (hs.logger.new "modal.fnl", "debug"))
 (var fsm nil)
 
 
@@ -42,7 +43,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Event Dispatchers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (fn activate-modal
   [menu-key]
@@ -97,7 +97,7 @@
       item.items
       (create-menu-trigger item)
       (fn []
-        (print "No trigger could be found for item: "
+        (log.w "No trigger could be found for item: "
                (hs.inspect item)))))
 
 
