@@ -86,35 +86,24 @@
       (call-when unbind-keys)
       (lifecycle.deactivate-app prev-app)
       (lifecycle.activate-app next-app)
-      {:app next-app
+      {:status :in-app
+       :app next-app
        :unbind-keys (bind-app-keys next-app.keys)
        :action :enter-app})))
-
-
-(fn idle->leave-app
-  [state app-name]
-  (let [{:app prev-app
-         :unbind-keys unbind-keys} state]
-    (if (= prev-app.name app-name)
-        (do (call-when unbind-keys)
-            (lifecycle.deactivate-app prev-app)
-            {:app :nil
-             :unbind-keys :nil
-             :action :leave-app})
-        nil)))
 
 (fn in-app->enter-app
   [state app-name]
   (let [{:apps apps
          :app prev-app
-         :un:enbind-keys unbind-keys} state
+         :unbind-keys unbind-keys} state
         next-app (find (by-key app-name) apps)]
     (if next-app
         (do
           (call-when unbind-keys)
           (lifecycle.deactivate-app prev-app)
           (lifecycle.activate-app next-app)
-          {:app next-app
+          {:status :in-app
+           :app next-app
            :unbind-keys (bind-app-keys next-app.keys)
            :action :enter-app})
         nil)))
@@ -128,7 +117,8 @@
         (do
           (call-when unbind-keys)
           (lifecycle.deactivate-app current-app)
-          {:app :nil
+          {:status :idle
+           :app :nil
            :unbind-keys :nil
            :action :leave-app})
         nil)))
@@ -139,8 +129,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local states
-       {:idle   {:enter-app      idle->enter-app
-                 :leave-app      idle->leave-app}
+       {:idle   {:enter-app      idle->enter-app}
         :in-app {:enter-app      in-app->enter-app
                  :leave-app      in-app->leave-app}})
 
@@ -187,8 +176,7 @@
   (atom.add-watch fsm.state :actions
                   (fn action-watcher
                     [state]
-                    (when state.app
-                      (emit state.action state.app)))))
+                    (emit state.action state.app))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

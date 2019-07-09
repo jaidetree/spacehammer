@@ -238,9 +238,15 @@
     (merge {:history [app-menu]}
            (show-modal-menu {:stop-timeout stop-timeout
                              :unbind-keys  unbind-keys
-                             :menu         app-menu
+                             :menu         (if (and app-menu (has-some? app-menu.items))
+                                               app-menu
+                                               config)
                              :history      history}))))
 
+
+(fn active->leave-app
+  [state]
+  (idle->active state))
 
 (fn active->submenu
   [state menu-key]

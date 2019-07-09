@@ -349,7 +349,12 @@
          ;;             (print "Activating Hammerspoon"))
          ;; :deactivate (fn []
          ;;             (print "Deactivating Hammerspoon"))
-         :items []
+         :items [{:key :r
+                  :title "Reload Config"
+                  :action hs.reload}
+                 {:key :c
+                  :title "Clear Console"
+                  :action hs.console.clearConsole}]
          :keys [{:mods [:cmd]
                  :key :y
                  :action (fn []
