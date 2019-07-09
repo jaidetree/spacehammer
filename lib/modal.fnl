@@ -338,13 +338,11 @@
                        :status :idle
                        :stop-timeout nil
                        :unbind-keys nil}
-        menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
         unsubscribe (apps.subscribe proxy-app-action)]
     (set fsm (statemachine.new states initial-state :status))
     (start-logger fsm)
     (fn cleanup []
-      (unsubscribe)
-      (: menu-hotkey :delete))))
+      (unsubscribe))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -352,4 +350,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-{:init init}
+{:init           init
+ :activate-modal activate-modal}
