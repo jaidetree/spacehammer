@@ -120,15 +120,6 @@
       (bind-keys)))
 
 
-(fn bind-global-keys
-  [items]
-  (each [_ item (ipairs items)]
-    (let [{:key key} item
-          mods (or item.mods [])
-          action-fn (action->fn item.action)]
-      (hs.hotkey.bind mods key action-fn))))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display Modals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -228,6 +219,7 @@
      :history []
      :unbind-keys :nil}))
 
+
 (fn active->enter-app
   [state app-menu]
   (let [{:config config
@@ -255,6 +247,7 @@
     (if (= prev-menu.key config.key)
         nil
         (idle->active state))))
+
 
 (fn active->submenu
   [state menu-key]
@@ -348,8 +341,6 @@
         menu-hotkey (hs.hotkey.bind [:cmd] :space activate-modal)
         unsubscribe (apps.subscribe proxy-app-action)]
     (set fsm (statemachine.new states initial-state :status))
-    ;; Move this into core
-    (bind-global-keys (or config.keys []))
     (start-logger fsm)
     (fn cleanup []
       (unsubscribe)

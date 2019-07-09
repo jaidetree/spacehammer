@@ -96,7 +96,7 @@
 
 (fn jump-to-last-window
   []
-  (let [utils (require :utils)]
+  (let [utils (require :lib.utils)]
     (-> (utils.globalFilter)
         (: :getWindows hs.window.filter.sortByFocusedLast)
         (. 2)

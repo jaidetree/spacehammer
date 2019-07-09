@@ -89,7 +89,11 @@
                   (require :private.config)
                   (require :config)))
 
+(local hyper (require :lib.hyper))
+(local bind (require :lib.bind))
 (local modal (require :lib.modal))
 (local apps (require :lib.apps))
+(hyper.init config)
+(bind.init config)
 (modal.init config)
 (apps.init config)

@@ -1,4 +1,6 @@
-(local {:split split}
+(local hyper (require :lib.hyper))
+(local {:contains? contains?
+        :split split}
        (require :lib.functional))
 
 (local log (hs.logger.new "bind.fnl" "debug"))
@@ -44,6 +46,20 @@
         (: modal :exit)
         (: modal :delete)))))
 
+(fn bind-global-keys
+  [items]
+  (each [_ item (ipairs items)]
+    (let [{:key key} item
+          mods (or item.mods [])
+          action-fn (action->fn item.action)]
+      (if (contains? :hyper mods)
+          (hyper.bind key action-fn)
+          (hs.hotkey.bind mods key action-fn)))))
 
-{:action->fn    action->fn
+(fn init
+  [config]
+  (bind-global-keys (or config.keys [])))
+
+{:init          init
+ :action->fn    action->fn
  :bind-keys     bind-keys}

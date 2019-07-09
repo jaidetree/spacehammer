@@ -8,6 +8,10 @@
   (when (and f (= (type f) :function))
     (f)))
 
+(fn contains?
+  [x xs]
+  (fu.contains xs x))
+
 (fn find
   [f tbl]
   (fu.find tbl f))
@@ -145,6 +149,7 @@
 
 {:call-when call-when
  :concat    concat
+ :contains? contains?
  :filter    filter
  :get       get
  :find      find
