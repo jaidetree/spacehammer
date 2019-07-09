@@ -12,7 +12,7 @@
         (if (. module fn-name)
             (: module fn-name)
             (do
-              (log.wf "ERROR: Could not invoke action %s"
+              (log.wf "Could not invoke action %s"
                      action)))))))
 
 
@@ -22,7 +22,7 @@
     :function action
     :string (create-action-fn action)
     _         (do
-                (log.wf "ERROR: Could not create action handler for %s"
+                (log.wf "Could not create action handler for %s"
                         (hs.inspect action))
                 (fn [] true))))
 

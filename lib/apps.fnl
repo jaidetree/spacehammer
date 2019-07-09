@@ -46,11 +46,11 @@
 ;; Event Dispatchers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(fn enter-app
+(fn enter
   [app-name]
   (fsm.dispatch :enter-app app-name))
 
-(fn leave-app
+(fn leave
   [app-name]
   (fsm.dispatch :leave-app app-name))
 
@@ -79,7 +79,7 @@
 ;; State Transitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(fn idle->enter-app
+(fn general->enter
   [state app-name]
   (let [{:apps apps
          :app prev-app
@@ -94,7 +94,7 @@
        :unbind-keys (bind-app-keys next-app.keys)
        :action :enter-app})))
 
-(fn in-app->enter-app
+(fn in-app->enter
   [state app-name]
   (let [{:apps apps
          :app prev-app
@@ -111,7 +111,7 @@
            :action :enter-app})
         nil)))
 
-(fn in-app->leave-app
+(fn in-app->leave
   [state app-name]
   (let [{:apps         apps
          :app          current-app
@@ -120,7 +120,7 @@
         (do
           (call-when unbind-keys)
           (lifecycle.deactivate-app current-app)
-          {:status :idle
+          {:status :general-app
            :app :nil
            :unbind-keys :nil
            :action :leave-app})
@@ -132,9 +132,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (local states
-       {:idle   {:enter-app      idle->enter-app}
-        :in-app {:enter-app      in-app->enter-app
-                 :leave-app      in-app->leave-app}})
+       {:general-app {:enter-app general->enter}
+        :in-app      {:enter-app in-app->enter
+                      :leave-app in-app->leave}})
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -155,9 +155,9 @@
   [app-name event app]
   (let [event-type (. app-events event)]
     (if (= event-type :activated)
-        (enter-app app-name)
+        (enter app-name)
         (= event-type :deactivated)
-        (leave-app app-name))))
+        (leave app-name))))
 
 (fn active-app-name
   []
@@ -210,14 +210,14 @@
   (let [active-app (active-app-name)
         initial-state {:apps config.apps
                        :app nil
-                       :status :idle
+                       :status :general-app
                        :unbind-keys nil
                        :action nil}
         app-watcher (hs.application.watcher.new watch-apps)]
     (set fsm (statemachine.new states initial-state :status))
     (start-logger fsm)
     (proxy-actions fsm)
-    (enter-app active-app)
+    (enter active-app)
     (: app-watcher :start)
     (fn cleanup []
       (: app-watcher :stop))))
