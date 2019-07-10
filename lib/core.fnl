@@ -93,7 +93,10 @@
 (local bind (require :lib.bind))
 (local modal (require :lib.modal))
 (local apps (require :lib.apps))
+(local vim (require :vim))
+
 (hyper.init config)
+(vim.init config)
 (bind.init config)
 (modal.init config)
 (apps.init config)

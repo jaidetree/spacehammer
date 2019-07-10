@@ -35,10 +35,13 @@
     (each [_ item (ipairs items)]
       (let [{:key key
              :mods mods
-             :action action} item
+             :action action
+             :repeat repeat} item
             mods (or mods [])
             action-fn (action->fn action)]
-        (: modal :bind mods key action-fn)))
+        (if repeat
+            (: modal :bind mods key action-fn nil action-fn)
+            (: modal :bind mods key action-fn))))
     (: modal :enter)
     (fn destroy-bindings
       []
