@@ -114,11 +114,17 @@
                  {:key :y
                   :action (key-fn [:cmd]   :c)}]})
 
-(fn key-watcher
-  [])
+(fn watch-key
+  [items event]
+  (print "event: " (hs.inspect event))
+  (values false, {}))
 
 (fn create-event-tap
-  [items])
+  [items]
+  (let [tap (hs.eventtap.new ["all"] (partial watch-key items))]
+    (: tap :start)
+    (fn []
+      (: tap :stop))))
 
 (fn state-box
   [label]
@@ -152,9 +158,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (fn normal-mode
-  []
+  [state]
   (state-box "Normal")
-  (bind-keys bindings.normal))
+  (call-when state.unbind-keys)
+  (call-when state.untap)
+  {:mode :normal
+   :untap (create-event-tap)
+   :unbind-keys (bind-keys bindings.normal)})
 
 (fn insert-mode
   []
@@ -173,38 +183,36 @@
 
 (fn disabled->normal
   [state data]
-  {:mode :normal
-   :unbind-keys (normal-mode)})
+  (normal-mode state))
 
 (fn normal->insert
   [state data]
   (call-when state.unbind-keys)
+  (call-when state.untap)
   {:mode :insert
    :unbind-keys (insert-mode)})
 
 (fn normal->visual
   [state data]
   (call-when state.unbind-keys)
+  (call-when state.untap)
   {:mode :visual
    :unbind-keys (visual-mode)})
 
 (fn ->disabled
   [state data]
   (call-when state.unbind-keys)
+  (call-when state.untap)
   {:mode :disabled
    :unbind-keys :nil})
 
 (fn insert->normal
   [state data]
-  (call-when state.unbind-keys)
-  {:mode :normal
-   :unbind-keys (normal-mode)})
+  (normal-mode state))
 
 (fn visual->normal
   [state data]
-  (call-when state.unbind-keys)
-  {:mode :normal
-   :unbind-keys (normal-mode)})
+  (normal-mode state))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
