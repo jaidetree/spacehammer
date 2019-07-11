@@ -325,6 +325,9 @@
 
 (local common-keys
        [{:mods [:cmd]
+         :key :space
+         :action "lib.modal:activate-modal"}
+        {:mods [:cmd]
          :key :n
          :action "apps:next-app"}
         {:mods [:cmd]

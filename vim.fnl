@@ -118,7 +118,7 @@
   [])
 
 (fn create-event-tap
-  [])
+  [items])
 
 (fn state-box
   [label]
@@ -243,7 +243,7 @@
                  :unbind-keys nil}]
     (set fsm (machine.new states initial :mode))
     (log-updates fsm)
-    (hyper.bind :v enable)
+    ; (hyper.bind :v enable)
     (enable)))
 
 
