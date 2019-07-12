@@ -116,8 +116,16 @@
 
 (fn watch-key
   [items event]
-  (print "event: " (hs.inspect event))
-  (values false, {}))
+  (let [key-code (: event :getKeyCode)
+        key-str  (. hs.keycodes.map key-code)
+        event-type (. hs.eventtap.event.types (: event :getType))
+        flags (: event :getFlags)]
+    (print "event: " (hs.inspect key-code)
+           (hs.inspect key-str)
+           (hs.inspect event-type)
+           (hs.inspect flags))
+    ;; 53 = ESCAPE
+    (values false {})))
 
 (fn create-event-tap
   [items]
