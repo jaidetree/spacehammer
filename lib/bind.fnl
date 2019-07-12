@@ -40,8 +40,8 @@
             mods (or mods [])
             action-fn (action->fn action)]
         (if repeat
-            (: modal :bind mods key action-fn nil action-fn)
-            (: modal :bind mods key action-fn))))
+            (: modal :bind mods key nil nil action-fn nil action-fn)
+            (: modal :bind mods key nil action-fn nil))))
     (: modal :enter)
     (fn destroy-bindings
       []

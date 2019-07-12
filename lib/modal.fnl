@@ -209,7 +209,7 @@
 (fn active->idle
   [state data]
   (let [{:menu prev-menu} state]
-    (hs.alert.closeAll)
+    (hs.alert.closeAll 0)
     (call-when state.stop-timeout)
     (call-when state.unbind-keys)
     (lifecycle.exit-menu prev-menu)

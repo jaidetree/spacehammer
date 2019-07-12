@@ -11,7 +11,7 @@
 ;; - The goal is to have a mode no other apps will be listening for
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(var hyper nil)
+(var hyper (hs.hotkey.modal.new))
 
 (fn enter-hyper-mode
   []
@@ -21,26 +21,44 @@
   []
   (: hyper :exit))
 
-(hs.hotkey.bind [] :F18 enter-hyper-mode exit-hyper-mode)
+(fn unbind-key
+  [key]
+  (when-let [binding (find (fn [{:msg msg}]
+                             (= msg key))
+                           hyper.keys)]
+            (: binding :delete)))
 
-(fn hyper-bind
+(fn bind
   [key f]
-  (: hyper :bind nil key f)
+  (: hyper :bind nil key nil f)
   (fn unbind
     []
-    (when-let [binding (find (fn [{:msg msg}] (= msg key)) hyper.keys)]
-              (: binding :delete))))
+    (unbind-key key)))
+
+(fn bind-spec
+  [{:key key
+    :mods mods
+    :press press-f
+    :release release-f
+    :repeat repeat-f}]
+  (: hyper :bind nil key press-f release-f repeat-f)
+  (fn unbind
+    []
+    (unbind-key key)))
 
 (fn init
   [config]
   (let [h (or config.hyper {})]
-    (set hyper
-         (hs.hotkey.modal.new (or h.mods []) h.key))))
+    (hs.hotkey.bind (or h.mods [])
+                    h.key
+                    enter-hyper-mode
+                    exit-hyper-mode)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Exports
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-{:init init
- :bind hyper-bind}
+{:init      init
+ :bind      bind
+ :bind-spec bind-spec}

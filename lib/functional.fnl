@@ -143,6 +143,31 @@
   []
   [...]))
 
+(fn some
+  [f tbl]
+  (let [filtered (filter f tbl)]
+    (>= (# filtered) 1)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Others
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fn eq?
+  [l1 l2]
+  (if (and (= (type l1) (type l2) "table")
+           (= (# l1) (# l2)))
+      (fu.every l1
+                (fn [v] (contains? v l2)))
+      (= (type l1) (type l2))
+      (= l1 l2)
+      false))
+
+(print "Is eq? "
+       (hs.inspect ["a" "b" "c"])
+       (hs.inspect ["a" "b" "c"])
+       (eq? ["a" "b" "c"]
+            ["a" "b" "c"]))
 
 ;; Exports
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -150,9 +175,10 @@
 {:call-when call-when
  :concat    concat
  :contains? contains?
+ :eq?       eq?
  :filter    filter
- :get       get
  :find      find
+ :get       get
  :has-some? has-some?
  :identity  identity
  :join      join
@@ -164,6 +190,7 @@
  :reduce    reduce
  :seq       seq
  :seq?      seq?
+ :some      some
  :slice     slice
  :split     split
  :tap       tap}
