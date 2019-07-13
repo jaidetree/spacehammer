@@ -1,8 +1,16 @@
 (local atom (require :lib.atom))
-(local {:call-when call-when} (require :lib.functional))
+(local hyper (require :lib.hyper))
+(local {:call-when call-when
+        :contains? contains?
+        :eq?       eq?
+        :filter    filter
+        :find      find
+        :has-some? has-some?
+        :map       map
+        :some      some} (require :lib.functional))
 (local machine (require :lib.statemachine))
 (local {:bind-keys bind-keys} (require :lib.bind))
-(local log (hs.logger.new "keybindings.fnl" "debug"))
+(local log (hs.logger.new "vim.fnl" "debug"))
 
 ;; Debug
 (local hyper (require :lib.hyper))
@@ -24,6 +32,7 @@
 
 (: text :setLevel :overlay)
 (: box :setLevel :overlay)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Actions
@@ -56,9 +65,13 @@
 ;; Helpers, Utils & Config
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(var ignore-fx false)
+
 (fn keystroke
   [target-mods target-key]
-  (hs.eventtap.keyStroke (or target-mods []) target-key 10000))
+  (set ignore-fx true)
+  (hs.eventtap.keyStroke (or target-mods []) target-key 10000)
+  (hs.timer.doAfter 0.1 (fn [] (set ignore-fx false))))
 
 (fn key-fn
   [target-mods target-key]
@@ -82,19 +95,19 @@
                  {:mods [:shift]
                   :key :i
                   :action (fn []
-                            (keystroke [:ctrl] :a)
-                            (insert))}
+                            (insert)
+                            (keystroke [:ctrl] :a))}
                  {:key :i
                   :action insert}
                  {:key :a
                   :action (fn []
-                            (keystroke nil :right)
-                            (insert))}
+                            (insert)
+                            (keystroke nil :right))}
                  {:mods [:shift]
                   :key :a
                   :action (fn []
-                            (keystroke [:ctrl] :e)
-                            (insert))}
+                            (insert)
+                            (keystroke [:ctrl] :e))}
                  {:key :v
                   :action visual}
                  {:key :/
@@ -114,30 +127,63 @@
                  {:key :y
                   :action (key-fn [:cmd]   :c)}]})
 
+(fn flags->mods
+  [flags]
+  (let [mods (->> flags
+                  (map (fn [is-pressed mod] [mod is-pressed]))
+                  (filter (fn [[mod is-pressed]] is-pressed))
+                  (map (fn [[mod]] mod)))]
+    (if (has-some? mods)
+        mods
+        nil)))
+
+(fn by-action
+  [mods key]
+  (fn [item]
+    (and (= key item.key)
+         (eq? mods item.mods))))
+
 (fn watch-key
   [items event]
   (let [key-code (: event :getKeyCode)
         key-str  (. hs.keycodes.map key-code)
         event-type (. hs.eventtap.event.types (: event :getType))
-        flags (: event :getFlags)]
-    (print "event: " (hs.inspect key-code)
-           (hs.inspect key-str)
-           (hs.inspect event-type)
-           (hs.inspect flags))
+        mods (flags->mods (: event :getFlags))
+        action-found (some (by-action mods key-str) items)
+        block-input (and (~= key-str :escape)
+                         (not ignore-fx)
+                         (not action-found)
+                         (not (contains? :fn mods))
+                         (not (contains? :cmd mods))
+                         (not (contains? :alt mods))
+                         (not (hyper.enabled?)))]
     ;; 53 = ESCAPE
-    (values false {})))
+    (print key-str "\t" (hs.inspect mods))
+    (print "Block input? "
+           block-input)
+    (values block-input {})))
 
 (fn create-event-tap
   [items]
-  (let [tap (hs.eventtap.new ["all"] (partial watch-key items))]
+  (let [types hs.eventtap.event.types
+        tap (hs.eventtap.new
+             [types.keyDown]
+             (partial watch-key items))]
     (: tap :start)
-    (fn []
+    (fn destroy
+      []
       (: tap :stop))))
+
+(fn create-screen-watcher
+  [f]
+  (let [watcher (hs.screen.watcher.newWithActiveScreen f)]
+    (: watcher :start)
+    (fn destroy []
+      (: watcher :stop))))
 
 (fn state-box
   [label]
   (let [frame (: (hs.screen.mainScreen) :fullFrame)
-        _ (print (hs.inspect frame))
         x frame.x
         y frame.y
         width frame.w
@@ -156,8 +202,7 @@
     (: text :setText label)
     (: text :setTextStyle {:alignment :center})
     (: box :show)
-    (: text :show)
-    (print (hs.inspect coords)))
+    (: text :show))
   box)
 
 
@@ -168,11 +213,12 @@
 (fn normal-mode
   [state]
   (state-box "Normal")
-  (call-when state.unbind-keys)
   (call-when state.untap)
+  (call-when state.unbind-keys)
   {:mode :normal
-   :untap (create-event-tap)
-   :unbind-keys (bind-keys bindings.normal)})
+   :untap (create-event-tap bindings.normal)
+   :unbind-keys (bind-keys bindings.normal)
+   })
 
 (fn insert-mode
   []
@@ -248,6 +294,12 @@
                   (fn [state]
                     (log.f "Vim mode: %s" (hs.inspect state)))))
 
+(fn watch-screen
+  [fsm active-screen-changed]
+  (let [state (atom.deref fsm.state)]
+    (when (~= state.mode :disabled)
+      (state-box state.mode))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialize
@@ -256,11 +308,15 @@
 (fn init
   [config]
   (let [initial {:mode        :disabled
-                 :unbind-keys nil}]
-    (set fsm (machine.new states initial :mode))
+                 :unbind-keys nil}
+        state-machine (machine.new states initial :mode)
+        stop-screen-watcher (create-screen-watcher
+                             (partial watch-screen state-machine))]
+    (set fsm state-machine)
     (log-updates fsm)
-    ; (hyper.bind :v enable)
-    (enable)))
+    (enable)
+    (fn []
+      (stop-screen-watcher))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

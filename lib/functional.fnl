@@ -10,7 +10,7 @@
 
 (fn contains?
   [x xs]
-  (fu.contains xs x))
+  (and xs (fu.contains xs x)))
 
 (fn find
   [f tbl]

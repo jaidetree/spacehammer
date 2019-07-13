@@ -12,13 +12,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (var hyper (hs.hotkey.modal.new))
+(var enabled false)
 
 (fn enter-hyper-mode
   []
+  (set enabled true)
   (: hyper :enter))
 
 (fn exit-hyper-mode
   []
+  (set enabled false)
   (: hyper :exit))
 
 (fn unbind-key
@@ -54,6 +57,10 @@
                     enter-hyper-mode
                     exit-hyper-mode)))
 
+(fn enabled?
+  []
+  (= enabled true))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Exports
@@ -61,4 +68,5 @@
 
 {:init      init
  :bind      bind
- :bind-spec bind-spec}
+ :bind-spec bind-spec
+ :enabled?  enabled?}
