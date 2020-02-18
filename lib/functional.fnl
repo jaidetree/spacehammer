@@ -1,23 +1,62 @@
 (local fu hs.fnutils)
 
+"
+Functional Programming Utilities
+While Hammerspoon does provide a functional utils lib, the args are in an order
+that does not play nicely with composition.
+
+For instance hs.fnutils.map has a signature of [ table ] -> f -> [ table ]
+These utils consistently reverse the order so that data is always last making it
+easier to partially apply, or in the future, curry, these functions.
+"
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Simple Utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (fn call-when
   [f]
-  "Execute function if it is not nil."
+  "
+  Takes a value (f) that could be a function
+  If f is a callable function, returns the result of the function
+  Otherwise returns nil
+  Useful for calling an optional callback
+
+  Example:
+  (global close-modal (fn []
+                       (print \"Close!\")
+                       (global close-modal nil)))
+  (call-when close-modal)
+  ;; => \"Close!\"
+  (call-when close-modal)
+  ;; No message printed but no error
+  "
   (when (and f (= (type f) :function))
     (f)))
 
 (fn contains?
   [x xs]
-  "Returns true if key is present in the given collection, otherwise returns false."
+  "
+  Takes a value and a table list
+  Returns true if table list contains the value x.
+
+  Example:
+  (contains? 1 [1 2 3]) ;; => true
+  "
   (and xs (fu.contains xs x)))
 
 (fn find
   [f tbl]
-  "Execute a function across a table and return the first element where that function returns true."
+  "
+  Takes a predicate function and a table list of values.
+  Predicate function will receive every value in list
+  and should return either true or false.
+  Returns the first value that matches the predicate or nil
+  if no value could be found.
+
+  Example:
+  (find #(< 2 $1) [1 2 3]) ;; => 3
+  "
   (fu.find tbl f))
 
 (fn get
